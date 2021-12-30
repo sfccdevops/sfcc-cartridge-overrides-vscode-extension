@@ -1,0 +1,126 @@
+{
+  "name": "sfcc-cartridge-overrides",
+  "displayName": "SFCC Cartridge Overrides",
+  "version": "1.0.0",
+  "description": "Context Menu to make Developing for Salesforce Commerce Cloud Easier",
+  "license": "MIT",
+  "publisher": "RedVanWorkshop",
+  "categories": [
+    "Other"
+  ],
+  "icon": "images/icon.png",
+  "galleryBanner": {
+    "color": "#00435f",
+    "theme": "dark"
+  },
+  "homepage": "https://github.com/redvanworkshop/sfcc-cartridge-overrides-vscode-extension#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/redvanworkshop/sfcc-cartridge-overrides-vscode-extension.git"
+  },
+  "bugs": {
+    "url": "https://github.com/redvanworkshop/sfcc-cartridge-overrides-vscode-extension/issues"
+  },
+  "engines": {
+    "vscode": "^1.46.0",
+    "node": "^12.8.0"
+  },
+  "keywords": [
+    "salesforce",
+    "sfcc",
+    "commerce-cloud",
+    "demandware",
+    "sandbox",
+    "sfra",
+    "vscode",
+    "extension"
+  ],
+  "contributors": [{
+    "name": "Peter Schmalfeldt",
+    "email": "peter@redvanworkshop.com",
+    "url": "https://redvanworkshop.com"
+  }],
+  "activationEvents": [
+    "*",
+    "workspaceContains:**/dw.json",
+    "onCommand:extension.sfccCartridges.openSettings"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "SFCC Cartridges",
+      "properties": {
+        "extension.sfccCartridges.path": {
+          "type": "string",
+          "default": "",
+          "description": "SFCC Cartridge Path for Storefront. List of cartridges separated by colon.",
+          "scope": "window",
+          "pattern": "^$|^[a-zA-Z0-9_:-]+$",
+          "patternErrorMessage": "Invalid Path Detected. Supports [a-zA-Z0-9_:-]"
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "sfcc-cartridges",
+          "title": "SFCC Cartridge Overrides",
+          "icon": "resources/activity-bar.svg"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "sfccGettingStartedView",
+        "contents": "Before we get started, we need to configure some Settings for this Extension to work.\n[Open Settings](command:extension.sfccCartridges.openSettings)\nNeed more information? [Get Help](https://github.com/redvanworkshop/sfcc-cartridge-overrides-vscode-extension#readme).",
+        "when": "!config.extension.sfccCartridges.path"
+      }
+    ],
+    "views": {
+      "sfcc-cartridges": [
+        {
+          "id": "sfccGettingStartedView",
+          "name": "Getting Started",
+          "when": "!config.extension.sfccCartridges.path"
+        },
+        {
+          "id": "sfccCartridgesView",
+          "name": "Cartridge Path",
+          "when": "config.extension.sfccCartridges.path"
+        },
+        {
+          "id": "sfccCartridgeOverridesView",
+          "name": "Overrides",
+          "when": "config.extension.sfccCartridges.path"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "extension.sfccCartridges.openSettings",
+          "group": "navigation@10",
+          "when": "view == sfccCartridgesView"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "extension.sfccCartridges.openSettings",
+        "title": "Update Extension Settings",
+        "category": "sfccCartridges",
+        "icon": {
+            "dark": "resources/dark/settings.svg",
+            "light": "resources/light/settings.svg"
+        }
+      }
+    ]
+  },
+  "scripts": {
+    "postinstall": "node ./node_modules/vscode/bin/install"
+  },
+  "devDependencies": {
+    "vscode": "^1.1.22"
+  },
+  "dependencies": {}
+}

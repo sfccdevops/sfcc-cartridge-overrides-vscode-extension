@@ -1,0 +1,6 @@
+.vscode/**
+.gitignore
+docs
+.github
+.editorconfig
+*.vsix
