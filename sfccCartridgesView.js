@@ -1,63 +1,50 @@
+const path = require('path');
 const vscode = require('vscode');
 
 const util = require('./util');
 
-class ViewPane {
-  getChildren() {
-    // Get Cartridge Path from Settings and Convert it to an Array
-    const cartridgePath = vscode.workspace.getConfiguration().get('extension.sfccCartridges.path');
-    let cartridges = cartridgePath.split(':');
-
-    // Cartridges we want to ignore if detected
-    const ignored = ['modules'];
-
-    // List of Cartridges to Render in VS Code Panel Tree
-    const items = [];
-
-    // Strip Ignored Cartridges from Cartridge List
-    cartridges = cartridges.filter(cartridge => ignored.indexOf(cartridge) === -1);
-
-    // Map Cartridge Names to Relative Workspace URLs
-    util.getCartridgeDirectories(cartridges).then(data => {
-      console.log('DONE');
-      console.log(data);
-    });
-
-    /**
-     * TODO: Get All Files within Cartridge Path
-     *
-     * - controllers
-     * - models
-     * - scripts
-     * - templates
-     *   - default
-     *   - resources
-     */
-
-    /**
-     * TODO: Process Cartridge File List
-     *
-     * - May need to limit this to: `controllers`, `scripts`, `models` & `templates` folders
-     * - Filter by File Type ( exclude: static )
-     *   - ++/cartridge/++/+.ds
-     *   - ++/cartridge/++/+.isml
-     *   - ++/cartridge/++/+.js
-     *   - ++/cartridge/++/+.properties
-     *   - ++/cartridge/++/+.xml
-     *  - Special Handling for Controllers using `server` ( e.g. get, post, prepend, append, replace, extend )
-     */
-
-    // Send Cartridge List to VS Code Panel Tree
-    cartridges.forEach(cartridge => {
-      items.push(new vscode.TreeItem(cartridge))
-    })
-
-    return Promise.resolve(items);
+class CartridgesViewProvider {
+  constructor(treeData) {
+    this.treeData = treeData;
+    this._onDidChangeTreeData = new vscode.EventEmitter();
+    this.onDidChangeTreeData = this._onDidChangeTreeData.event;
+    this.autoRefresh = true;
   }
 
-  getTreeItem(element) {
-    return element;
+  getChildren(element) {
+    // TODO: Sort children so folders are first, then files
+    if (element) {
+      return Promise.resolve(element.children);
+    } else {
+      return Promise.resolve(this.treeData);
+    }
+  }
+
+  getTreeItem(item) {
+    const collapsibleState = (item.children && item.children.length > 0) ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None;
+    const treeItem = new vscode.TreeItem(item.name, collapsibleState);
+
+    // Add Custom Tree Item Data
+    treeItem.command = item.command || null;
+    treeItem.description = item.description || null;
+    treeItem.iconPath = item.iconPath || null;
+    treeItem.resourceUri = item.resourceUri || null;
+    treeItem.tooltip = item.tooltip || null;
+
+    return treeItem;
+  }
+
+  refresh() {
+    console.log('REFRESHED');
+    // TODO: Make this refresh the cartridge list
+    this._onDidChangeTreeData.fire();
+  }
+
+  update(treeData) {
+    console.log('UPDATED');
+    this.treeData = treeData
+    this._onDidChangeTreeData.fire();
   }
 }
 
-module.exports = ViewPane;
+module.exports = CartridgesViewProvider;

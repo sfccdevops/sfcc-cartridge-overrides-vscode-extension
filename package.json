@@ -2,7 +2,7 @@
   "name": "sfcc-cartridge-overrides",
   "displayName": "SFCC Cartridge Overrides",
   "version": "1.0.0",
-  "description": "Context Menu to make Developing for Salesforce Commerce Cloud Easier",
+  "description": "VS Code Extension to Display SFCC Cartridge Overrides",
   "license": "MIT",
   "publisher": "RedVanWorkshop",
   "categories": [
@@ -35,15 +35,17 @@
     "vscode",
     "extension"
   ],
-  "contributors": [{
-    "name": "Peter Schmalfeldt",
-    "email": "peter@redvanworkshop.com",
-    "url": "https://redvanworkshop.com"
-  }],
+  "contributors": [
+    {
+      "name": "Peter Schmalfeldt",
+      "email": "peter@redvanworkshop.com",
+      "url": "https://redvanworkshop.com"
+    }
+  ],
   "activationEvents": [
-    "*",
-    "workspaceContains:**/dw.json",
-    "onCommand:extension.sfccCartridges.openSettings"
+    "onView:sfccGettingStartedView",
+    "onView:sfccCartridgesView",
+    "onView:sfccCartridgeOverridesView"
   ],
   "main": "./extension.js",
   "contributes": {
@@ -101,6 +103,11 @@
           "command": "extension.sfccCartridges.openSettings",
           "group": "navigation@10",
           "when": "view == sfccCartridgesView"
+        },
+        {
+          "command": "extension.sfccCartridges.refreshCartridges",
+          "group": "navigation@10",
+          "when": "view == sfccCartridgesView"
         }
       ]
     },
@@ -110,17 +117,27 @@
         "title": "Update Extension Settings",
         "category": "sfccCartridges",
         "icon": {
-            "dark": "resources/dark/settings.svg",
-            "light": "resources/light/settings.svg"
+          "dark": "resources/dark/settings.svg",
+          "light": "resources/light/settings.svg"
         }
+      },
+      {
+        "command": "extension.sfccCartridges.refreshCartridges",
+        "title": "Refresh Cartridges",
+        "category": "sfccCartridges",
+        "icon": {
+          "dark": "resources/dark/refresh.svg",
+          "light": "resources/light/refresh.svg"
+        }
+      },
+      {
+        "command": "extension.sfccCartridges.cartridgeListUpdated",
+        "title": "Cartridge List Updated",
+        "category": "sfccCartridges"
       }
     ]
   },
-  "scripts": {
-    "postinstall": "node ./node_modules/vscode/bin/install"
-  },
-  "devDependencies": {
-    "vscode": "^1.1.22"
-  },
+  "scripts": {},
+  "devDependencies": {},
   "dependencies": {}
 }
