@@ -34,15 +34,8 @@ class CartridgesViewProvider {
     return treeItem;
   }
 
-  refresh() {
-    console.log('REFRESHED');
-    // TODO: Make this refresh the cartridge list
-    this._onDidChangeTreeData.fire();
-  }
-
   update(treeData) {
-    console.log('UPDATED');
-    this.treeData = treeData
+    this.treeData = treeData;
     this._onDidChangeTreeData.fire();
   }
 }

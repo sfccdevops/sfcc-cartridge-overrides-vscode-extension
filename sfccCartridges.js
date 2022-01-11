@@ -6,92 +6,67 @@ const util = require('./util');
 class Cartridges {
   constructor() {
     this.workspacePath = util.getWorkspace();
-    this.cartridgesPath = this.getFromPath();
+    this.cartridgesPath = this.getCartridgesPath();
 
-    // Fetch files from Workspace and wait for Promise with cartridgeData
-    this.getFromWorkspace().then(cartridgeData => {
-      this.overrides = cartridgeData.overrides;
-      this.cartridgesFound = cartridgeData.cartridgesFound;
+    // Fetch files from Workspace and wait for Promise with cartridgeFiles
+    this.getCartridges().then(cartridges => {
+      // this.cartridgeFiles = cartridgeFiles;
+      //this.overrides = this.getOverrides();
+      this.treeCartridges = this.generateTree(cartridges);
 
-      this.treeCartridges = this.generateTree();
-      this.treeOverrides = [];
+      //console.log(this.overrides.cartridges.app_storefront_core);
+      //console.log(this.overrides);
+      //console.log(this.cartridgeFiles);
+      //console.log(this.overrides);
 
       vscode.commands.executeCommand('extension.sfccCartridges.cartridgeListUpdated', this.treeCartridges);
     });
-
-    /**
-     * TODO: Need to complete these steps in this order
-     *
-     * [X] 1. Get Cartridge Path from Config and build Cartridges Array
-     * [X] 2. Find and save Each Cartridges Relative Path to Workspace
-     * [X] 3. Loop through each cartridge path and locate `controllers`, `models`, `scripts` and `templates` folders and save matching files to mapped object properties with same name
-     * [X] 4. Once we have all the mapped files, loop through the new collection and look for overrides ( files with same relative path from cartridge root ) and store to new overrides object using relative path as key
-     * [ ] 5. Once we have all the overrides stored, loop through that object and create new properties tracking number of overrides on a cartridge, folder, and file level ( for both directions in the cartridge path )
-     * [ ] 6. Once we have everything mapped out, create a tree view that we can export for VS Code
-     */
   }
+  generateTree(cartridges) {
+    const treeData = [];
 
-  generateTree() {
-    let treeData = [];
-    let level = {
-      treeData
-    };
-    let currentCartridge;
+    this.cartridgesPath.forEach(name => {
+      const description = [];
+      const tooltip = [];
 
-    this.cartridgesFound.forEach(filePath => {
-      filePath.split('/').reduce((obj, name, index) => {
-        if (!obj[name]) {
-          obj[name] = {
-            treeData: []
-          };
+      if (cartridges[name].overrides && cartridges[name].overrides.above > 0) {
+        const aboveCount = cartridges[name].overrides.above;
+        description.push(`↑ ${aboveCount}`);
+        tooltip.push(`↑ ${aboveCount} Cartridge Override${aboveCount > 1 ? 's' : ''} ${aboveCount > 1 ? 's' : ''} Above`);
+      }
 
-          const treeItem = {
-            name,
-            children: obj[name].treeData
-          }
+      if (cartridges[name].overrides && cartridges[name].overrides.below > 0) {
+        const belowCount = cartridges[name].overrides.below;
+        description.push(`↓ ${belowCount}`);
+        tooltip.push(`↓ Overrides ${belowCount} Cartridge${belowCount > 1 ? 's' : ''} Below`);
+      }
 
-          let overrideCount = 0;
+      // Create Tree Meta Data
+      let iconPath = this.getIcon('cartridge', cartridges[name].overrides ? cartridges[name].overrides.total : 0);
+      let descriptionText = description.length > 0 ? description.join(' ') : null;
+      let tooltipText = tooltip.length > 0 ? tooltip.join(' ') : null;
 
-          if (index === 0) {
-            treeItem.contextValue = 'folder';
-            currentCartridge = name;
-            overrideCount = this.overrides.cartridges[name].total;
-          } else if (index === 1 && typeof this.overrides.cartridges[currentCartridge][name] !== 'undefined') {
-            treeItem.contextValue = 'folder';
-            overrideCount = this.overrides.cartridges[currentCartridge][name];
-          } else if (typeof this.overrides.files[filePath.replace(`${currentCartridge}${path.sep}`, '')] !== 'undefined') {
-            overrideCount = this.overrides.files[filePath.replace(`${currentCartridge}${path.sep}`, '')].length - 1;
+      // Check if Cartridge is Missing from Workspace
+      if (cartridges[name].missing) {
+        iconPath = this.getIcon('cartridge-missing', cartridges[name].overrides ? cartridges[name].overrides.total : 0);
+        tooltipText = '⚠ Cartridge Missing from Workspace';
+        descriptionText = '⚠';
+      }
 
-            treeItem.contextValue = 'file';
-            treeItem.resourceUri = vscode.Uri.file(`${this.workspacePath}${this.overrides.files[filePath.replace(`${currentCartridge}${path.sep}`, '')][0].file}`);
-
-            // Handle Clicking Tree Item
-            if (overrideCount === 0) {
-              treeItem.command = {
-                command: 'vscode.open',
-                title: 'Open File',
-                arguments: [treeItem.resourceUri]
-              };
-            }
-          }
-
-          // Show
-          if (overrideCount > 0) {
-            treeItem.tooltip = `↑ ${overrideCount} Overrides`;
-            treeItem.description = `↑ ${overrideCount}`;
-          }
-
-          obj.treeData.push(treeItem);
-        }
-
-        return obj[name];
-      }, level)
+      treeData.push({
+        name,
+        contextValue: 'folder',
+        children: cartridges[name].tree,
+        iconPath: iconPath,
+        tooltip: tooltipText,
+        description: descriptionText
+      })
     });
 
     return treeData;
   }
 
-  getFromPath() {
+  getCartridgesPath() {
     // Get Cartridge Path from Settings and Convert it to an Array
     const cartridgePath = vscode.workspace.getConfiguration().get('extension.sfccCartridges.path');
     const cartridgesArray = cartridgePath.split(':');
@@ -103,91 +78,242 @@ class Cartridges {
     return cartridgesArray.filter(cartridge => ignoredCartridges.indexOf(cartridge) === -1);
   }
 
-  getFromWorkspace() {
+  getCartridges() {
+    // Fetch Config for Override Visibility
+    const overridesOnly = vscode.workspace.getConfiguration().get('extension.sfccCartridges.overridesOnly');
+
     // Generate Relative Path for Cartridge Pattern Matching
     const includePattern = new vscode.RelativePattern(this.workspacePath, `**/cartridges/{${this.cartridgesPath.join(',')}}/cartridge/{controllers,models,scripts,templates}/**/*.{js,ds,isml,properties}`);
     const excludePattern = new vscode.RelativePattern(this.workspacePath, '**/node_modules/');
 
-    const fileData = {
-      overrides: {
-        files: {},
-        cartridges: {},
-      },
-      cartridgesFound: []
-    };
-
     // Use Native VS Code methods to locate Cartridges
     return (vscode.workspace.findFiles(includePattern, excludePattern).then(files => {
+      // Store Cartridge File Data
+      const cartridgeFileData = {};
+      const cartridges = {};
+
+      // Clone Files so we can sort them
       const filesClone = files.map(file => file.fsPath.replace(this.workspacePath, ''));
 
+      // Sort File List Alphabetically
+      filesClone.sort((a, b) => {
+        return a.localeCompare(b);
+      });
+
+      // Loop through files and look for overrides
+      filesClone.forEach((file, index) => {
+        // Pattern to grab some cartridge data about this file
+        const regexPattern = /^(.+)\/cartridges\/([^/]+)\/cartridge\/(.+)$/;
+        const fileParts = file.match(regexPattern);
+
+        // Make sure this is a cartridge file
+        if (fileParts.length === 4) {
+          // Map file parts to more helpful names
+          const basePath = fileParts[1];
+          const cartridgeName = fileParts[2];
+          const relativeFilePath = fileParts[3];
+
+          // Check where this cartridge is in the cartridge path
+          const position = this.cartridgesPath.indexOf(cartridgeName);
+
+          // Track relative file path info
+          if (!cartridgeFileData.hasOwnProperty(relativeFilePath)) {
+            // This is a new file, so no overrides so far
+            cartridgeFileData[relativeFilePath] = [
+              {
+                cartridge: cartridgeName,
+                file: file,
+                position: position
+              }
+            ];
+          } else {
+            // We already have this file somewhere so there are overrides now
+            cartridgeFileData[relativeFilePath].push({
+              cartridge: cartridgeName,
+              file: file,
+              position: position
+            })
+          }
+
+          // Sort files by position in cartridge path
+          cartridgeFileData[relativeFilePath].sort((a, b) => a.position - b.position)
+        }
+      });
+
+      const getOverrides = (cartridge, relativeKey) => {
+        const matches = [];
+        const position = this.cartridgesPath.indexOf(cartridge);
+
+        const total = Object.keys(cartridgeFileData).reduce((cart, key) => {
+          return cart.concat(cartridgeFileData[key].filter(override => {
+            const isMatch = relativeKey
+              ? cartridgeFileData[key].length > 1 && override.cartridge === cartridge && override.file.indexOf(relativeKey) > -1
+              : cartridgeFileData[key].length > 1 && override.cartridge === cartridge;
+
+            if (isMatch) {
+              matches.push(key);
+            }
+
+            return isMatch;
+          }));
+        }, []);
+
+        let above = 0;
+        let below = 0;
+
+        matches.forEach(match => {
+          if (cartridgeFileData[match].filter(override => override.cartridge !== cartridge && override.position < position).length > 0) {
+            above++;
+          }
+
+          if (cartridgeFileData[match].filter(override => override.cartridge !== cartridge && override.position > position).length > 0) {
+            below++;
+          }
+        })
+
+        return {
+          above: above,
+          below: below,
+          total: total.length
+        };
+      }
+
       this.cartridgesPath.forEach(cartridge => {
-        filesClone.forEach((file, index) => {
-          const isCartridgeMatch = file.includes(`${path.sep}${cartridge}${path.sep}`);
-          const isController = file.includes(`${path.sep}controllers${path.sep}`);
-          const isModel = file.includes(`${path.sep}models${path.sep}`);
-          const isScript = file.includes(`${path.sep}scripts${path.sep}`);
-          const isTemplate = file.includes(`${path.sep}templates${path.sep}`);
+        const cartridgeFiles = filesClone.filter(file => file.indexOf(`cartridges/${cartridge}/cartridge`) > -1);
 
-          if (isCartridgeMatch) {
-            const splitPath = file.split(`${path.sep}${cartridge}${path.sep}`);
-            const relativePath = splitPath[1].replace(`cartridge${path.sep}`, '');
+        // Check if Cartridge is missing
+        if (cartridgeFiles.length === 0 && !cartridges.hasOwnProperty(cartridge) && !overridesOnly) {
+          cartridges[cartridge] = {
+            missing: true,
+            overrides: null,
+            tree: []
+          }
+        }
 
-            // Add File to Cartridge Tree
-            fileData.cartridgesFound.push(`${cartridge}/${relativePath}`);
+        // Create Tree
+        let treeData = [];
+        let level = {
+          treeData
+        };
 
-            if (!fileData.overrides.files.hasOwnProperty(relativePath)) {
-              fileData.overrides.files[relativePath] = [{
-                cartridge: cartridge,
-                file: file
-              }];
-            } else {
-              fileData.overrides.files[relativePath].push({
-                cartridge: cartridge,
-                file: file
-              });
-            }
+        cartridgeFiles.forEach(file => {
+          const regex = /^(.+)\/cartridges\/([^/]+)\/cartridge\/(.+)$/;
+          const parts = file.match(regex);
 
-            // Track counts of overrides
-            if (!fileData.overrides.cartridges.hasOwnProperty(cartridge)) {
-              fileData.overrides.cartridges[cartridge] = {
-                total: 0,
-                controllers: 0,
-                models: 0,
-                scripts: 0,
-                templates: 0
-              };
-            } else if (fileData.overrides.files[relativePath].length > 1) {
-              fileData.overrides.cartridges[cartridge].total += 1;
+          if (parts.length === 4) {
+            const base = parts[1];
+            const cartridge = parts[2];
+            const relativePath = parts[3];
+            const splitRelativePath = relativePath.split('/');
 
-              if (isController) {
-                fileData.overrides.cartridges[cartridge].controllers += 1;
-              }
+            // Create Cartridge Tracker
+            if (!cartridges.hasOwnProperty(cartridge)) {
+              const baseOverrides = getOverrides(cartridge);
 
-              if (isModel) {
-                fileData.overrides.cartridges[cartridge].models += 1;
-              }
-
-              if (isScript) {
-                fileData.overrides.cartridges[cartridge].scripts += 1;
-              }
-
-              if (isTemplate) {
-                fileData.overrides.cartridges[cartridge].templates += 1;
+              if (!overridesOnly || baseOverrides.total > 0) {
+                cartridges[cartridge] = {
+                  missing: false,
+                  overrides: baseOverrides
+                };
               }
             }
 
-            // If this is a match, let's remove it from the sorting list to make next iteration faster
-            filesClone.splice(index, 1);
+            splitRelativePath.reduce((obj, name, index) => {
+              const relativeKey = `${base}/cartridges/${cartridge}/cartridge/${splitRelativePath.slice(0, index + 1).join('/')}`;
+
+              if (!obj[name]) {
+                obj[name] = {
+                  treeData: []
+                };
+
+                const contextValue = (index === 0) ? name : (index === splitRelativePath.length - 1) ? 'file' : 'folder';
+                const fileOverrides = getOverrides(cartridge, relativeKey);
+
+                let iconPath = contextValue !== 'file' && contextValue !== 'folder'
+                  ? this.getIcon(name, fileOverrides ? fileOverrides.total : 0)
+                  : null;
+
+                const treeItem = {
+                  name,
+                  contextValue: contextValue,
+                  children: obj[name].treeData,
+                  overrides: fileOverrides,
+                  iconPath: iconPath
+                }
+
+                if (contextValue === 'file') {
+                  treeItem.resourceUri = vscode.Uri.file(`${this.workspacePath}${relativeKey}`);
+
+                  // Handle Clicking Tree Item
+                  if (fileOverrides.total === 0) {
+                    treeItem.command = {
+                      command: 'vscode.open',
+                      title: 'Open File',
+                      arguments: [treeItem.resourceUri]
+                    };
+                  }
+                }
+
+                const description = [];
+                const tooltip = [];
+
+                if (fileOverrides && fileOverrides.above > 0) {
+                  const aboveCount = fileOverrides.above;
+                  description.push(`↑ ${aboveCount}`);
+                  tooltip.push(`↑ ${aboveCount} Cartridge Override${aboveCount > 1 ? 's' : ''} Above`);
+                }
+
+                if (fileOverrides && fileOverrides.below > 0) {
+                  const belowCount = fileOverrides.below;
+                  description.push(`↓ ${belowCount}`);
+                  tooltip.push(`↓ Overrides ${belowCount} Cartridge${belowCount > 1 ? 's' : ''} Below`);
+                }
+
+                // Create Tree Meta Data
+                let descriptionText = description.length > 0 ? description.join(' ') : null;
+                let tooltipText = tooltip.length > 0 ? tooltip.join(' ') : null;
+
+                treeItem.description = descriptionText;
+                treeItem.tooltip = tooltipText;
+
+                if (!overridesOnly || fileOverrides.total > 0) {
+                  obj.treeData.push(treeItem);
+                }
+
+                // Sort tree by folder first, then file
+                obj.treeData.sort((a, b) => {
+                  // Skip custom sorting on root level
+                  if (index > 0) {
+                    // If both are same type, sort by name
+                    if (a.contextValue === b.contextValue) {
+                      return a.name.localeCompare(b.name);
+                    }
+
+                    // Otherwise, sort folders before files
+                    return (b.contextValue !== 'file') ? 1 : -1;
+                  }
+
+                  // Use default sorting for root level
+                  return a.name.localeCompare(b.name);
+                });
+              }
+
+              return obj[name];
+            }, level);
+
+            cartridges[cartridge].tree = treeData;
           }
         });
       });
 
-      return fileData;
+      return cartridges;
     }))
   }
-  getIcon(type) {
-    // TODO: Map Custom Icons for Overwritten Files and Folders
-    return null;
+  getIcon(type, overrideCount) {
+    return {
+      light: path.join(__filename, '..', 'resources', 'light', `${type}${overrideCount && overrideCount > 0 ? '-override' : ''}.svg`),
+      dark: path.join(__filename, '..', 'resources', 'dark', `${type}${overrideCount && overrideCount > 0 ? '-override' : ''}.svg`)
+    };
   }
 }
 
