@@ -155,6 +155,16 @@
         "category": "sfccCartridges"
       },
       {
+        "command": "extension.sfccCartridges.cartridgeMissing",
+        "title": "Cartridge Missing",
+        "category": "sfccCartridges"
+      },
+      {
+        "command": "extension.sfccCartridges.viewOverrides",
+        "title": "View Overrides",
+        "category": "sfccCartridges"
+      },
+      {
         "command": "extension.sfccCartridges.enableFilter",
         "title": "Show Overrides Only",
         "category": "sfccCartridges",
