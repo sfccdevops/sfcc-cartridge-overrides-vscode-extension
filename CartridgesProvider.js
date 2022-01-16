@@ -3,7 +3,7 @@ const vscode = require('vscode');
 /**
  * SFCC Cartridge Tree View Provider
  */
-class CartridgesViewProvider {
+class CartridgesProvider {
   /**
    * SFCC Cartridge Tree View Provider
    * @param {Object} treeData Array of Cartridge Tree Data
@@ -31,6 +31,54 @@ class CartridgesViewProvider {
       // No children here, so we can just render what we have
       return Promise.resolve(this.treeData);
     }
+  }
+
+  /**
+   * Get Tree View Node Element
+   * @param {String} file File Path to Lookup
+   * @returns
+   */
+  getElement(file) {
+    let level = 0;
+    let found = [];
+
+    const regex = /^(.+)\/cartridges\/([^/]+)\/cartridge\/(.+)$/;
+    const parts = file.match(regex);
+
+    // Sanity check that we have all the info we need
+    if (parts.length === 4) {
+      // Break out file parts into variables
+      const cartridge = parts[2];
+      const relativePath = parts[3];
+      const splitRelativePath = relativePath.split('/');
+      const tree = [cartridge].concat(splitRelativePath);
+
+      // Get Root Element from Tree Item
+      let element = this.treeData.find(item => {
+        return item.name === tree[level]
+      });
+
+      // Loop through any possible Tree Item Children to find Match
+      while (element !== undefined) {
+          ++level;
+          found.push(element);
+
+          element = element.children ? element.children.find(item => {
+            return item.name === tree[level]
+          }) : undefined;
+      }
+    }
+
+    return found;
+  }
+
+  /**
+   * Get Parent ( used for Tree View `reveal` method )
+   * @param {Object} element
+   * @returns
+   */
+  getParent(element) {
+    return element.parent;
   }
 
   /**
@@ -65,4 +113,4 @@ class CartridgesViewProvider {
   }
 }
 
-module.exports = CartridgesViewProvider;
+module.exports = CartridgesProvider;

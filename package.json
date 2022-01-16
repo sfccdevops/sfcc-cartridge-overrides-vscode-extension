@@ -43,6 +43,7 @@
     }
   ],
   "activationEvents": [
+    "onCommand:extension.sfccCartridges.checkOverrides",
     "onView:sfccGettingStartedView",
     "onView:sfccCartridgesView",
     "onView:sfccCartridgeOverridesView"
@@ -107,6 +108,13 @@
       ]
     },
     "menus": {
+      "editor/title": [
+        {
+          "when": "explorerViewletVisible && resourceExtname =~ /[.](js|ds|isml|properties)$/ && resourcePath =~ /(controllers|models|scripts|templates)/ && resourcePath =~ /(cartridges|cartridge)/",
+          "command": "extension.sfccCartridges.checkOverrides",
+          "group": "navigation@1"
+        }
+      ],
       "view/title": [
         {
           "command": "extension.sfccCartridges.openSettings",
@@ -127,6 +135,12 @@
           "command": "extension.sfccCartridges.disableFilter",
           "group": "navigation@10",
           "when": "view == sfccCartridgesView && config.extension.sfccCartridges.overridesOnly"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "extension.sfccCartridges.generateDiff",
+          "when": "view == sfccCartridgeOverridesView && listDoubleSelection"
         }
       ]
     },
@@ -180,6 +194,20 @@
         "icon": {
           "dark": "resources/dark/filter-enabled.svg",
           "light": "resources/light/filter-enabled.svg"
+        }
+      },
+      {
+        "command": "extension.sfccCartridges.generateDiff",
+        "title": "Create DIFF: Before ↔ After",
+        "group": "sfccCartridges@1"
+      },
+      {
+        "command": "extension.sfccCartridges.checkOverrides",
+        "title": "Check for Cartridge Overrides",
+        "category": "sfccCartridges",
+        "icon": {
+          "dark": "resources/dark/cartridge.svg",
+          "light": "resources/light/cartridge.svg"
         }
       }
     ]

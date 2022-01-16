@@ -1,6 +1,7 @@
 const vscode = require('vscode');
 const path = require('path');
 
+const Cache = require('./Cache');
 const util = require('./util');
 
 /**
@@ -10,7 +11,16 @@ class Cartridges {
   /**
    * Initialize Cartridges
    */
-  constructor() {
+  constructor(context) {
+    // Create Cache Instances
+    this.cacheFiles = new Cache(context, 'files');
+    this.cacheOverrides = new Cache(context, 'overrides');
+
+    // TODO: Figure out what other things I can use cache for to optimize rendering
+
+    // Establish VS Code Context
+    this.context = context;
+
     // Fetch Cartridge Path from Configuration
     this.cartridgesPath = this.getCartridgesPath();
 
@@ -20,8 +30,8 @@ class Cartridges {
     // Default Tree View data
     this.treeCartridges = [];
 
-    // Do initial load of data
-    this.refresh();
+    // Do initial load of data using cache
+    this.refresh(true);
   }
 
   /**
@@ -59,13 +69,13 @@ class Cartridges {
         }
 
         // Create Root Tree Meta Data
-        let iconPath = this.getIcon('cartridge', cartridges[name].overrides ? cartridges[name].overrides.total : 0);
+        let iconPath = util.getIcon('cartridge', cartridges[name].overrides ? cartridges[name].overrides.total : 0);
         let descriptionText = description.length > 0 ? description.join(' ') : null;
         let tooltipText = tooltip.length > 0 ? tooltip.join(' ') : null;
 
         // Check if Cartridge is Missing from Workspace
         if (cartridges[name].missing) {
-          iconPath = this.getIcon('cartridge-missing', cartridges[name].overrides ? cartridges[name].overrides.total : 0);
+          iconPath = util.getIcon('cartridge-missing', cartridges[name].overrides ? cartridges[name].overrides.total : 0);
           tooltipText = '⚠ Cartridge Missing from Workspace';
           descriptionText = '⚠';
 
@@ -77,7 +87,7 @@ class Cartridges {
           }
 
           // Debug Missing Cartridge to Log
-          util.debug(`Cartridge Missing from Workspace: ${name}`, 'warn');
+          util.logger(`Cartridge Missing from Workspace: ${name}`, 'warn');
         }
 
         // Push Item to Tree View
@@ -98,15 +108,25 @@ class Cartridges {
 
   /**
    * Get Cartridge Path
+   *
+   * @note There may be use cases where a developer needs to leave their dw.json "as is",
+   * but still needs to test their cartridge path overrides ( multiple sites, BM vs Storefront, etc )
+   * So we will use a custom config option just for this extension and default to dw.json if present
+   * but want to make sure they are not forced to change dw.json to use this override tool as that
+   * could impact other development processes in ways this extension should not be doing.
+   *
    * @returns {Object} Filtered Cartridge Array
    */
   getCartridgesPath() {
+    // TODO: Check if dw.json has cartridgePath defined and use it as the default ( prompt user to approve using it )
+    // TODO: Add hooks in to check the dw.json cartridgePath against the config path and see if they want to update it if dw.json changed
+
     // Get Cartridge Path from Settings and Convert it to an Array
     const cartridgePath = vscode.workspace.getConfiguration().get('extension.sfccCartridges.path');
     const cartridgesArray = cartridgePath.split(':');
 
     // Debug Cartridge Path
-    util.debug(`CARTRIDGE PATH:\n- ${cartridgesArray.join('\n- ')}`);
+    util.logger(`CARTRIDGE PATH:\n- ${cartridgesArray.join('\n- ')}`);
 
     // Cartridges we want to ignore if detected
     const ignoredCartridges = ['modules'];
@@ -128,25 +148,99 @@ class Cartridges {
     const excludePattern = new vscode.RelativePattern(this.workspacePath, '**/node_modules/');
 
     // Debug Possibly Helpful Info
-    util.debug(`Fetching SFCC Cartridges from Workspace ...`, 'debug');
-    util.debug(`Overrides Only: ${overridesOnly ? 'Enabled' : 'Disabled'}`, 'debug');
+    util.logger(`Fetching SFCC Cartridges from Workspace ...`, 'debug');
+    util.logger(`Overrides Only: ${overridesOnly ? 'Enabled' : 'Disabled'}`, 'debug');
 
-    // Use Native VS Code methods to locate Cartridges
-    return (vscode.workspace.findFiles(includePattern, excludePattern).then(files => {
-      // Store Cartridge File Data
-      const cartridgeFileData = {};
-      const cartridges = {};
+    // Store Cartridge File Data
+    const cartridgeFileData = {};
+    const cartridges = {};
 
-      // Clone Files so we can sort them
-      const filesClone = files.map(file => file.fsPath.replace(this.workspacePath, ''));
+    /**
+     * Calculate Cartridge, Folder & Filter Overrides
+     * @param {String} cartridge Name of Cartridge
+     * @param {String} relativeKey Relative Path to Tree Item
+     * @param {Boolean} skipCacheWrite Whether we should skip writing to cache
+     * @returns {Object} Override Counts
+     */
+    const getOverrides = (cartridge, relativeKey, skipCacheWrite) => {
+      // Generate Cache Key for Override Lookup
+      const cacheKey = `${cartridge}${relativeKey ? relativeKey.replace(/[\/.]/g, '-') : ''}`;
 
-      // Sort File List Alphabetically
-      filesClone.sort((a, b) => {
-        return a.localeCompare(b);
-      });
+      // Return Cache if Present ( calculating overrides is a time consuming process )
+      if (this.cacheOverrides.has(cacheKey)) {
+        return this.cacheOverrides.get(cacheKey);
+      }
+
+      // Store matches between cartridges
+      const matches = [];
+
+      // Get position of current cartridge in cartridge path
+      const position = this.cartridgesPath.indexOf(cartridge);
+
+      // Get total for overrides contained inside this cartridge for a given folder or file
+      const total = Object.keys(cartridgeFileData).reduce((cart, key) => {
+        return cart.concat(cartridgeFileData[key].filter(override => {
+          // Check if this tree item exists in another cartridge
+          const isMatch = (relativeKey && override.file)
+            ? cartridgeFileData[key].length > 1 && override.cartridge === cartridge && override.file.indexOf(relativeKey) > -1
+            : cartridgeFileData[key].length > 1 && override.cartridge === cartridge;
+
+          // Track matches
+          if (isMatch) {
+            matches.push(key);
+          }
+
+          return isMatch;
+        }));
+      }, []);
+
+      // Keep track of matching files to the left and right of cartridge path
+      let above = 0;
+      let below = 0;
+
+      // Loop through matches we found inside this cartridge against other cartridges
+      matches.forEach(match => {
+        // Check if this relative path exists in another cartridge to the left of the current cartridge path
+        above += (cartridgeFileData[match].filter(override => override.cartridge !== cartridge && override.position < position)).length;
+
+        // Check if this relative path exists in another cartridge to the right of the current cartridge path
+        below += (cartridgeFileData[match].filter(override => override.cartridge !== cartridge && override.position > position)).length;
+      })
+
+      // Create Simplified Overrides Count for Tree View
+      const overrides = {
+        above: above,
+        below: below,
+        total: total.length
+      };
+
+      if (!skipCacheWrite) {
+        this.cacheOverrides.put(cacheKey, overrides);
+      }
+
+      return overrides;
+    }
+
+    const processFiles = (files, skipCacheWrite) => {
+      let filesClone;
+
+      // Cache Files
+      if (!skipCacheWrite) {
+        // Clone Files so we can sort them
+        filesClone = files.map(file => file.fsPath.replace(this.workspacePath, ''));
+
+        // Sort File List Alphabetically
+        filesClone.sort((a, b) => {
+          return a.localeCompare(b);
+        });
+
+        this.cacheFiles.put('workspaceFiles', filesClone);
+      } else {
+        filesClone = files;
+      }
 
       // Loop through files and look for overrides
-      filesClone.forEach((file, index) => {
+      filesClone.forEach(file => {
         // Pattern to grab some cartridge data about this file
         const regexPattern = /^(.+)\/cartridges\/([^/]+)\/cartridge\/(.+)$/;
         const fileParts = file.match(regexPattern);
@@ -154,7 +248,6 @@ class Cartridges {
         // Make sure this is a cartridge file
         if (fileParts.length === 4) {
           // Map file parts to more helpful names
-          const basePath = fileParts[1];
           const cartridgeName = fileParts[2];
           const relativeFilePath = fileParts[3];
 
@@ -168,7 +261,8 @@ class Cartridges {
               {
                 cartridge: cartridgeName,
                 file: file,
-                position: position
+                position: position,
+                resourceUri: vscode.Uri.file(`${this.workspacePath}${file}`)
               }
             ];
           } else {
@@ -176,7 +270,8 @@ class Cartridges {
             cartridgeFileData[relativeFilePath].push({
               cartridge: cartridgeName,
               file: file,
-              position: position
+              position: position,
+              resourceUri: vscode.Uri.file(`${this.workspacePath}${file}`)
             })
           }
 
@@ -184,60 +279,6 @@ class Cartridges {
           cartridgeFileData[relativeFilePath].sort((a, b) => a.position - b.position)
         }
       });
-
-      /**
-       * Calculate Cartridge, Folder & Filter Overrides
-       * @param {String} cartridge Name of Cartridge
-       * @param {String} relativeKey Relative Path to Tree Item
-       * @returns {Object} Override Counts
-       */
-      const getOverrides = (cartridge, relativeKey) => {
-        // Store matches between cartridges
-        const matches = [];
-
-        // Get position of current cartridge in cartridge path
-        const position = this.cartridgesPath.indexOf(cartridge);
-
-        // Get total for overrides contained inside this cartridge for a given folder or file
-        const total = Object.keys(cartridgeFileData).reduce((cart, key) => {
-          return cart.concat(cartridgeFileData[key].filter(override => {
-            // Check if this tree item exists in another cartridge
-            const isMatch = relativeKey
-              ? cartridgeFileData[key].length > 1 && override.cartridge === cartridge && override.file.indexOf(relativeKey) > -1
-              : cartridgeFileData[key].length > 1 && override.cartridge === cartridge;
-
-            // Track matches
-            if (isMatch) {
-              matches.push(key);
-            }
-
-            return isMatch;
-          }));
-        }, []);
-
-        // Keep track of matching files to the left and right of cartridge path
-        let above = 0;
-        let below = 0;
-
-        // Loop through matches we found inside this cartridge against other cartridges
-        matches.forEach(match => {
-          // Check if this relative path exists in another cartridge to the left of the current cartridge path
-          if (cartridgeFileData[match].filter(override => override.cartridge !== cartridge && override.position < position).length > 0) {
-            above++;
-          }
-
-          // Check if this relative path exists in another cartridge to the right of the current cartridge path
-          if (cartridgeFileData[match].filter(override => override.cartridge !== cartridge && override.position > position).length > 0) {
-            below++;
-          }
-        })
-
-        return {
-          above: above,
-          below: below,
-          total: total.length
-        };
-      }
 
       // Loop through Cartridge Path in the order they were listed
       this.cartridgesPath.forEach(cartridge => {
@@ -273,9 +314,9 @@ class Cartridges {
             const relativePath = parts[3];
             const splitRelativePath = relativePath.split('/');
 
-            // Create Cartridge Tracker
+            // Create Cartridge Tree View Root
             if (!cartridges.hasOwnProperty(cartridge)) {
-              const baseOverrides = getOverrides(cartridge);
+              const baseOverrides = getOverrides(cartridge, null, skipCacheWrite);
 
               if (!overridesOnly || baseOverrides.total > 0) {
                 cartridges[cartridge] = {
@@ -297,10 +338,11 @@ class Cartridges {
 
                 // Get Data about Tree Item
                 const contextValue = (index === 0) ? name : (index === splitRelativePath.length - 1) ? 'file' : 'folder';
-                const fileOverrides = getOverrides(cartridge, relativeKey);
+                const fileOverrides = getOverrides(cartridge, relativeKey, skipCacheWrite);
 
+                // Generate Custom Icon for Tree View
                 let iconPath = contextValue !== 'file' && contextValue !== 'folder'
-                  ? this.getIcon(name, fileOverrides ? fileOverrides.total : 0)
+                  ? util.getIcon(name, fileOverrides ? fileOverrides.total : 0)
                   : null;
 
                 // Build Tree Item
@@ -316,24 +358,20 @@ class Cartridges {
                 if (contextValue === 'file') {
                   treeItem.resourceUri = vscode.Uri.file(`${this.workspacePath}${relativeKey}`);
 
-                  // Handle Clicking Tree Item
-                  if (fileOverrides.total === 0) {
-                    // This Tree Item does not have overrides, so we can just open the file
-                    treeItem.command = {
-                      command: 'vscode.open',
-                      title: 'Open File',
-                      arguments: [treeItem.resourceUri]
-                    };
-                  } else {
-                    // This Tree Item is an override, or has overrides, so we need to do hand that off to the Overrides Panel
-                    treeItem.command = {
-                      command: 'extension.sfccCartridges.viewOverrides',
-                      title: 'View Overrides',
-                      arguments: [{
-                        overrides: cartridgeFileData[relativePath],
-                        cartridge: cartridge
-                      }]
-                    };
+                  // This Tree Item is an override, or has overrides, so we need to do hand that off to the Overrides Panel
+                  treeItem.command = {
+                    command: 'vscode.open',
+                    title: 'Open File',
+                    arguments: [treeItem.resourceUri]
+                  };
+
+                  // We need some additional data for handing off to Overrides Panel
+                  treeItem.data = {
+                    cartridge: cartridge,
+                    name: relativePath.substring(relativePath.lastIndexOf('/') + 1),
+                    overrides: cartridgeFileData[relativePath],
+                    resourceUri: vscode.Uri.file(`${this.workspacePath}${relativeKey}`),
+                    type: util.getType(file)
                   }
                 }
 
@@ -359,6 +397,7 @@ class Cartridges {
                 let descriptionText = description.length > 0 ? description.join(' ') : null;
                 let tooltipText = tooltip.length > 0 ? tooltip.join(' ') : null;
 
+                // Update Tree Item Labels
                 treeItem.description = descriptionText;
                 treeItem.tooltip = tooltipText;
 
@@ -397,35 +436,35 @@ class Cartridges {
       });
 
       // Let debugger know what we found
-      util.debug(`Found ${files.length.toLocaleString()} files in ${Object.keys(cartridges).length.toLocaleString()} Cartridges in Workspace`, 'success');
+      util.logger(`Found ${files.length.toLocaleString()} files in ${Object.keys(cartridges).length.toLocaleString()} Cartridges in Workspace`, 'success');
 
       return cartridges;
-    }))
-  }
-
-  /**
-   * Get Icon for Tree View
-   * @param {String} type Tree Item Type
-   * @param {Integer} overrideCount Use to Indicate Override
-   * @returns {Object} Tree Item iconPath
-   */
-  getIcon(type, overrideCount) {
-    return {
-      light: path.join(__filename, '..', 'resources', 'light', `${type}${overrideCount && overrideCount > 0 ? '-override' : ''}.svg`),
-      dark: path.join(__filename, '..', 'resources', 'dark', `${type}${overrideCount && overrideCount > 0 ? '-override' : ''}.svg`)
     };
+
+    // Check if we have cache for Workspace Files
+    if (this.cacheFiles.has('workspaceFiles')) {
+      // We have a cached file list
+      return Promise.resolve(processFiles(this.cacheFiles.get('workspaceFiles'), true));
+    } else {
+      // Use Native VS Code methods to locate Cartridges
+      return (vscode.workspace.findFiles(includePattern, excludePattern).then(files => processFiles(files)));
+    }
   }
 
   /**
    * Refresh Cartridge Tree
    */
-  refresh() {
-    // TODO: Add start & stop time to track performance of different cartridge tree parsing options during development
-
+  refresh(useCache) {
     // Show Loading Indicator Until Loaded
     vscode.window.withProgress({
 			location: { viewId: 'sfccCartridgesView' }
 		}, () => new Promise(resolve => {
+      if (!useCache) {
+        // Clear Cache
+        this.cacheFiles.flush();
+        this.cacheOverrides.flush();
+      }
+
       // Fetch Files from Workspace
       this.getCartridges().then(cartridges => {
         // Update Tree View Data

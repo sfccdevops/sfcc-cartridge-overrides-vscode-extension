@@ -2,16 +2,21 @@ const path = require('path');
 const vscode = require('vscode');
 
 // Create custom Output Channel to Log Helpful Messages
-const logger = vscode.window.createOutputChannel('SFCC Cartridge Overrides');
+const output = vscode.window.createOutputChannel('SFCC Cartridge Overrides');
 
 /**
- * Debug output to "SFCC Cartridge Overrides" Output Terminal
+ * Log output to "SFCC Cartridge Overrides" Output Terminal
  * @param {String} message Debug Message
  * @param {String} type Debug Type
  */
-function debug(message, type) {
+const logger = (message, type) => {
   let icon = '';
   let newLine = type ? '\n' : '';
+
+  // Convert message to String if it was not already
+  if (typeof message !== 'string') {
+    message = JSON.stringify(message);
+  }
 
   // Prefix Logger Messages with Icons
   if (type === 'debug') {
@@ -25,7 +30,43 @@ function debug(message, type) {
   }
 
   // Write Output to Terminal
-  logger.appendLine(`${newLine}${icon}${message}`);
+  output.appendLine(`${newLine}${icon}${message}`);
+}
+
+/**
+ * Get Icon for Tree View
+ * @param {String} type Tree Item Type
+ * @param {Integer} overrideCount Use to Indicate Override
+ * @returns {Object} Tree Item iconPath
+ */
+const getIcon = (type, overrideCount) => {
+  return {
+    light: path.join(__filename, '..', 'resources', 'light', `${type}${overrideCount && overrideCount > 0 ? '-active' : ''}.svg`),
+    dark: path.join(__filename, '..', 'resources', 'dark', `${type}${overrideCount && overrideCount > 0 ? '-active' : ''}.svg`)
+  };
+}
+
+/**
+ * Get File Type from Path
+ * @param {String} file Relative File Path
+ * @returns {String} SFCC File Type
+ */
+const getType = file => {
+  if (file.includes(`${path.sep}controllers${path.sep}`)) {
+    return 'controller';
+  }
+  else if (file.includes(`${path.sep}models${path.sep}`)) {
+    return 'model';
+  }
+  else if (file.includes(`${path.sep}scripts${path.sep}`)) {
+    return 'script';
+  }
+  else if (file.includes(`${path.sep}templates${path.sep}`)) {
+    return 'template';
+  }
+  else {
+    return 'unknown';
+  }
 }
 
 /**
@@ -33,7 +74,7 @@ function debug(message, type) {
  * @param {*} resource
  * @returns
  */
-function getWorkspace(resource) {
+const getWorkspace = resource => {
   let root;
   let workspace;
 
@@ -56,17 +97,19 @@ function getWorkspace(resource) {
   // If we did not get Workspace, let the user know
   if (!workspace) {
     const message = 'Workspace Folder Not Found. Open Folder or Workspace and try again.';
-    debug(message, 'error');
+    logger(message, 'error');
     vscode.window.showErrorMessage(`SFCC Cartridge Overrides: ${message}`);
   }
 
   // Debug Cartridge Path
-  debug(`\nWORKSPACE: ${workspace}`);
+  logger(`\nWORKSPACE: ${workspace}`);
 
   return workspace;
 }
 
 module.exports = {
-  debug,
+  logger,
+  getIcon,
+  getType,
   getWorkspace
 }

@@ -1,30 +1,136 @@
 const vscode = require('vscode');
 
-const sfccCartridges = require('./sfccCartridges');
-const sfccCartridgesView = require('./sfccCartridgesView');
+const Cartridges = require('./Cartridges');
+const CartridgesProvider = require('./CartridgesProvider');
+const CartridgeOverridesProvider = require('./CartridgeOverridesProvider');
+const util = require('./util');
+
+// TODO: Add Right Click Context to File in Explorer View to `Check for Overrides` like we did with the icon when a tab is open
 
 /**
  * Handle Activating Extension
  * @param {*} context
  */
 function activate(context) {
+  // Store Current Opened File Name
+  let currentEditorFileName;
+
+  // Store which Tree View File is Selected
+  let currentSelectedFileName;
+
   // Create Cartridges Object
-  const cartridges = new sfccCartridges();
+  const cartridges = new Cartridges(context);
 
-  // Add the custom view
-  const sfccCartridgesProvider = new sfccCartridgesView();
+  // Initialize Tree View Providers
+  const cartridgesViewProvider = new CartridgesProvider();
+  const cartridgeOverridesProvider = new CartridgeOverridesProvider();
 
-  // Register Tree Data Providers
-  vscode.window.registerTreeDataProvider('sfccCartridgesView', sfccCartridgesProvider);
+  // Register Tree Data Providers to Workspace
+  const sfccCartridgesView = vscode.window.createTreeView('sfccCartridgesView', { treeDataProvider: cartridgesViewProvider, showCollapseAll: true });
+  const sfccCartridgeOverridesView = vscode.window.createTreeView('sfccCartridgeOverridesView', { treeDataProvider: cartridgeOverridesProvider, showCollapseAll: false, canSelectMany: true });
+
+  // Handle File Switcher
+  const selectTreeViewFile = () => {
+    // Exit if the Selected File is the same as the Active File
+    if (currentEditorFileName !== undefined && currentEditorFileName === currentSelectedFileName) {
+      return;
+    }
+
+    // Make sure this is a file we care about
+    if (util.getType(currentEditorFileName) !== 'unknown' && ['ds', 'js', 'isml', 'properties'].indexOf(currentEditorFileName.split('.').pop()) > -1) {
+      // Update Current Selected File Name
+      currentSelectedFileName = currentEditorFileName;
+
+      // Store some lookup info
+      let max = 0;
+      let found = null;
+
+      // Try to Find Tree Item
+      const nodes = cartridgesViewProvider.getElement(currentEditorFileName);
+
+      // Reveal Cartridge File in Tree View
+      const revealCartridgeFile = index => {
+        // Check if we are at the end, if so, this is the file
+        const isFile = index === max;
+
+        // Use native VS Code Tree View to Expand Node Element
+        sfccCartridgesView.reveal(nodes[index], { focus: isFile, select: isFile, expand: true }).then(() => {
+          // Check if we need to expand more of the Tree View
+          if (index < max) {
+            revealCartridgeFile(index + 1);
+          }
+        }).catch(err => util.logger(err, 'error'));
+      }
+
+      // If we found a match, reveal it in the tree
+      if (nodes && nodes.length > 0) {
+        // Store Last Node
+        max = nodes.length - 1;
+
+        // Get Override for Last Node ( this will be the file name )
+        found = (nodes[max].data) ? nodes[max].data : null;
+      }
+
+      // Check if we found a matching Override and reveal it in the Tree View
+      if (found) {
+        // Walk Tree View to Reveal File
+        revealCartridgeFile(0);
+
+        // Go ahead an update the Overrides Panel with Selected File
+        cartridgeOverridesProvider.load(found).then(() => {
+          // Once we have populated the Override Panel, let's select the active override
+          const selectedOverride = cartridgeOverridesProvider.getElement(found.cartridge);
+          sfccCartridgeOverridesView.reveal(selectedOverride, { focus: true, select: true, expand: true }).catch(err => util.logger(err, 'error'));
+        });
+      } else {
+        // Show Information Message
+        vscode.window.showInformationMessage(`No Overrides Found: ${currentSelectedFileName.substring(currentSelectedFileName.lastIndexOf('/') + 1)}`);
+      }
+    }
+  }
 
   // Register Commands
-  const cartridgeListUpdated = vscode.commands.registerCommand('extension.sfccCartridges.cartridgeListUpdated', treeData => sfccCartridgesProvider.refresh(treeData));
+  const cartridgeListUpdated = vscode.commands.registerCommand('extension.sfccCartridges.cartridgeListUpdated', treeData => cartridgesViewProvider.refresh(treeData));
   const cartridgeMissing = vscode.commands.registerCommand('extension.sfccCartridges.cartridgeMissing', cartridge => vscode.window.showErrorMessage(`Cartridge Missing from Workspace: ${cartridge}`));
   const disableFilter = vscode.commands.registerCommand('extension.sfccCartridges.disableFilter', () => vscode.workspace.getConfiguration().update('extension.sfccCartridges.overridesOnly', false, vscode.ConfigurationTarget.Global));
   const enableFilter = vscode.commands.registerCommand('extension.sfccCartridges.enableFilter', () => vscode.workspace.getConfiguration().update('extension.sfccCartridges.overridesOnly', true, vscode.ConfigurationTarget.Global));
   const openSettings = vscode.commands.registerCommand('extension.sfccCartridges.openSettings', () => vscode.commands.executeCommand('workbench.action.openSettings', 'extension.sfccCartridges'));
-  const refreshCartridges = vscode.commands.registerCommand('extension.sfccCartridges.refreshCartridges', () => cartridges.refresh());
-  const viewOverrides = vscode.commands.registerCommand('extension.sfccCartridges.viewOverrides', overrides => console.log(overrides));
+  const refreshCartridges = vscode.commands.registerCommand('extension.sfccCartridges.refreshCartridges', () => cartridges.refresh(false));
+  const viewOverrides = vscode.commands.registerCommand('extension.sfccCartridges.viewOverrides', overrides => cartridgeOverridesProvider.load(overrides));
+
+  // Check if the user clicked the Cartridge Icon in the File Tab list
+  const checkOverrides = vscode.commands.registerCommand('extension.sfccCartridges.checkOverrides', file => {
+    if (file && file.path) {
+      currentEditorFileName = file.path;
+      selectTreeViewFile();
+    }
+  });
+
+  // Listen for when a Developer has two files selected and clicked the DIFF Context Menu
+  const generateDiff = vscode.commands.registerCommand('extension.sfccCartridges.generateDiff', (selected, choices) => {
+    // We will need to sort out which order to generate the diff in
+    let before;
+    let after;
+    let title;
+
+    // Sanity check to make sure we have exactly two files selected
+    if (selected && choices && choices.length === 2) {
+      if (choices[0].sortOrder < choices[1].sortOrder) {
+        // Files were selected in reverse order, let's update it
+        before = choices[1].command.arguments[0];
+        after = choices[0].command.arguments[0];
+        title = `${choices[1].description} ↔ ${choices[0].description}`;
+      } else {
+        // Files were selected in sort order
+        before = choices[0].command.arguments[0];
+        after = choices[1].command.arguments[0];
+        title = `${choices[0].description} ↔ ${choices[1].description}`;
+      }
+
+      // Generate DIFF between `before` and `after` files
+      vscode.commands.executeCommand('vscode.diff', before, after, title, { background: false, preview: false });
+    }
+  });
 
   // Listen for Config Change of Overrides and Regenerate Tree when Changed
   context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(evt => {
@@ -35,16 +141,86 @@ function activate(context) {
     const pathChanged = evt.affectsConfiguration('extension.sfccCartridges.path');
 
     // Check if we should update Cartridge List
-    if (overridesOnlyChanged || pathChanged) {
-      cartridges.refresh();
+    if (overridesOnlyChanged) {
+      cartridges.refresh(true);
+      cartridgeOverridesProvider.reset();
+    } else if (pathChanged) {
+      cartridges.refresh(false);
+      cartridgeOverridesProvider.reset();
     }
   }));
+
+  // Listen for File Creation in Workspace
+  context.subscriptions.push(vscode.workspace.onDidCreateFiles(evt => {
+    // If a file was created that belonged to a cartridge, we need to refresh
+    if (evt.files.some((file) => util.getType(file.path) !== 'unknown')) {
+      cartridges.refresh(false);
+      cartridgeOverridesProvider.reset();
+    }
+  }));
+
+  // Listen for File Deletion in Workspace
+  context.subscriptions.push(vscode.workspace.onDidDeleteFiles(evt => {
+    // If a file was deleted that belonged to a cartridge, we need to refresh
+    if (evt.files.some((file) => util.getType(file.path) !== 'unknown')) {
+      cartridges.refresh(false);
+      cartridgeOverridesProvider.reset();
+    }
+  }));
+
+  // Listen for Initial ( so we can switch to the file in our Tree View, if present )
+  context.subscriptions.push(vscode.workspace.onDidOpenTextDocument(document => {
+    // Make sure we have an active document in the editor
+    if (document && document.fileName) {
+      // Get current Document File Name
+      currentEditorFileName = document.fileName;
+
+      // Make sure our View is Visible and select the current file
+      if (sfccCartridgesView.visible) {
+        selectTreeViewFile();
+      }
+    }
+  }));
+
+  // Listen for Tab Switching in Window ( so we can switch to the file in our Tree View, if present )
+  context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(editor => {
+    // Make sure we have an active document in the editor
+    if (editor && editor.document) {
+      // Get current Document File Name
+      currentEditorFileName = editor.document.fileName;
+
+      // Make sure our View is Visible and select the current file
+      if (sfccCartridgesView.visible) {
+        selectTreeViewFile();
+      }
+    }
+  }));
+
+  // Check if our Cartridge View has Changed Visibility
+  sfccCartridgesView.onDidChangeVisibility(view => {
+    // Get Active Editor so we can check for open files
+    const activeEditor = vscode.window.activeTextEditor;
+
+    // Check if our View is Visible and if we already had a file open
+    if (view.visible && currentEditorFileName) {
+      // Open File in Tree View
+      selectTreeViewFile();
+    } else if (view.visible && activeEditor && activeEditor.document && activeEditor.document.fileName) {
+      // Our View is Visible, but we did not have any previous files open with it, so let's get the current file
+      currentEditorFileName = activeEditor.document.fileName;
+
+      // Let's give the editor a little bit to finish changing since we need to ask for file info
+      setTimeout(selectTreeViewFile, 1000);
+    }
+  })
 
   // Update VS Code Extension Subscriptions
   context.subscriptions.push(cartridgeListUpdated);
   context.subscriptions.push(cartridgeMissing);
+  context.subscriptions.push(checkOverrides);
   context.subscriptions.push(disableFilter);
   context.subscriptions.push(enableFilter);
+  context.subscriptions.push(generateDiff);
   context.subscriptions.push(openSettings);
   context.subscriptions.push(refreshCartridges);
   context.subscriptions.push(viewOverrides);
