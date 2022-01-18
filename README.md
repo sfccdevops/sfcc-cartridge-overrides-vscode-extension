@@ -12,7 +12,7 @@ Extension Development
 > Before this extension is available in the VS Code Marketplace, you can test it manually:
 
 1. Open File `extension.code-workspace` in VS Code
-2. Open File `extension/index.js`
+2. Run `npm install` in VS Code Terminal
 3. Press `F5` to test extension in a new VS Code window
 
 NOTE: The first time you press `F5` it may launch in an empty workspace. You will likely need to open your SFCC project into this new VS Code window.
