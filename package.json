@@ -23,7 +23,7 @@
   },
   "engines": {
     "vscode": "^1.46.0",
-    "node": "^12.8.0"
+    "node": "^14.17.0"
   },
   "keywords": [
     "salesforce",
@@ -33,7 +33,15 @@
     "sandbox",
     "sfra",
     "vscode",
-    "extension"
+    "extension",
+    "override",
+    "cartridge",
+    "template",
+    "controller",
+    "script",
+    "model",
+    "diff",
+    "tool"
   ],
   "contributors": [
     {
@@ -48,26 +56,26 @@
     "onView:sfccCartridgesView",
     "onView:sfccCartridgeOverridesView"
   ],
-  "main": "./extension.js",
+  "main": "./extension",
   "contributes": {
     "configuration": {
       "id": "sfccCartridges",
-      "title": "SFCC Cartridge Overrides",
+      "title": "%extension.title%",
       "properties": {
         "extension.sfccCartridges.path": {
           "order": 1,
           "type": "string",
           "default": "",
-          "description": "SFCC Cartridge Path for Storefront. List of cartridges separated by colon.",
+          "description": "%config.properties.path.description%",
           "scope": "window",
           "pattern": "^$|^[a-zA-Z0-9_:-]+$",
-          "patternErrorMessage": "Invalid Path Detected. Supports [a-zA-Z0-9_:-]"
+          "patternErrorMessage": "%config.properties.path.error%"
         },
         "extension.sfccCartridges.overridesOnly": {
           "order": 2,
           "type": "boolean",
           "default": false,
-          "description": "Only show Cartridges and Files with Overrides.",
+          "description": "%config.properties.overridesOnly.description%",
           "scope": "window"
         }
       }
@@ -76,15 +84,15 @@
       "activitybar": [
         {
           "id": "sfcc-cartridges",
-          "title": "SFCC Cartridge Overrides",
-          "icon": "resources/activity-bar.svg"
+          "title": "%extension.title%",
+          "icon": "extension/resources/activity-bar.svg"
         }
       ]
     },
     "viewsWelcome": [
       {
         "view": "sfccGettingStartedView",
-        "contents": "Before we get started, we need to configure some Settings for this Extension to work.\n[Open Settings](command:extension.sfccCartridges.openSettings)\nNeed more information? [Get Help](https://github.com/redvanworkshop/sfcc-cartridge-overrides-vscode-extension#readme).",
+        "contents": "%panel.welcome.message%",
         "when": "!config.extension.sfccCartridges.path"
       }
     ],
@@ -92,17 +100,17 @@
       "sfcc-cartridges": [
         {
           "id": "sfccGettingStartedView",
-          "name": "Getting Started",
+          "name": "%panel.welcome.title%",
           "when": "!config.extension.sfccCartridges.path"
         },
         {
           "id": "sfccCartridgesView",
-          "name": "Cartridge Path",
+          "name": "%panel.cartridges.title%",
           "when": "config.extension.sfccCartridges.path"
         },
         {
           "id": "sfccCartridgeOverridesView",
-          "name": "Overrides",
+          "name": "%panel.overrides.title%",
           "when": "config.extension.sfccCartridges.path"
         }
       ]
@@ -110,9 +118,9 @@
     "menus": {
       "editor/title": [
         {
-          "when": "explorerViewletVisible && resourceExtname =~ /[.](js|ds|isml|properties)$/ && resourcePath =~ /(controllers|models|scripts|templates)/ && resourcePath =~ /(cartridges|cartridge)/",
           "command": "extension.sfccCartridges.checkOverrides",
-          "group": "navigation@1"
+          "group": "navigation@1",
+          "when": "explorerViewletVisible && resourceExtname =~ /[.](js|ds|isml|properties)$/ && resourcePath =~ /(controllers|models|scripts|templates)/ && resourcePath =~ /(cartridges|cartridge)/"
         }
       ],
       "view/title": [
@@ -140,79 +148,106 @@
       "view/item/context": [
         {
           "command": "extension.sfccCartridges.generateDiff",
+          "group": "sfcc-overrides@1",
           "when": "view == sfccCartridgeOverridesView && listDoubleSelection"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "extension.sfccCartridges.checkOverrides",
+          "group": "sfcc-overrides@1",
+          "when": "activeViewlet == 'workbench.view.explorer' && resourceExtname =~ /[.](js|ds|isml|properties)$/ && resourcePath =~ /(controllers|models|scripts|templates)/ && resourcePath =~ /(cartridges|cartridge)/"
         }
       ]
     },
     "commands": [
       {
         "command": "extension.sfccCartridges.openSettings",
-        "title": "Update Extension Settings",
+        "title": "%command.openSettings.title%",
         "category": "sfccCartridges",
         "icon": {
-          "dark": "resources/dark/settings.svg",
-          "light": "resources/light/settings.svg"
+          "dark": "extension/resources/dark/settings.svg",
+          "light": "extension/resources/light/settings.svg"
         }
       },
       {
         "command": "extension.sfccCartridges.refreshCartridges",
-        "title": "Refresh Cartridges",
+        "title": "%command.refreshCartridges.title%",
         "category": "sfccCartridges",
         "icon": {
-          "dark": "resources/dark/refresh.svg",
-          "light": "resources/light/refresh.svg"
+          "dark": "extension/resources/dark/refresh.svg",
+          "light": "extension/resources/light/refresh.svg"
         }
       },
       {
         "command": "extension.sfccCartridges.cartridgeListUpdated",
-        "title": "Cartridge List Updated",
+        "title": "%command.cartridgeListUpdated.title%",
         "category": "sfccCartridges"
       },
       {
         "command": "extension.sfccCartridges.cartridgeMissing",
-        "title": "Cartridge Missing",
+        "title": "%command.cartridgeMissing.title%",
         "category": "sfccCartridges"
       },
       {
         "command": "extension.sfccCartridges.viewOverrides",
-        "title": "View Overrides",
+        "title": "%command.viewOverrides.title%",
         "category": "sfccCartridges"
       },
       {
         "command": "extension.sfccCartridges.enableFilter",
-        "title": "Show Overrides Only",
+        "title": "%command.enableFilter.title%",
         "category": "sfccCartridges",
         "icon": {
-          "dark": "resources/dark/filter.svg",
-          "light": "resources/light/filter.svg"
+          "dark": "extension/resources/dark/filter.svg",
+          "light": "extension/resources/light/filter.svg"
         }
       },
       {
         "command": "extension.sfccCartridges.disableFilter",
-        "title": "Show All Cartridge Files",
+        "title": "%command.disableFilter.title%",
         "category": "sfccCartridges",
         "icon": {
-          "dark": "resources/dark/filter-enabled.svg",
-          "light": "resources/light/filter-enabled.svg"
+          "dark": "extension/resources/dark/filter-enabled.svg",
+          "light": "extension/resources/light/filter-enabled.svg"
         }
       },
       {
         "command": "extension.sfccCartridges.generateDiff",
-        "title": "Create DIFF: Before ↔ After",
+        "title": "%command.generateDiff.title%",
         "group": "sfccCartridges@1"
       },
       {
         "command": "extension.sfccCartridges.checkOverrides",
-        "title": "Check for Cartridge Overrides",
+        "title": "%command.checkOverrides.title%",
         "category": "sfccCartridges",
         "icon": {
-          "dark": "resources/dark/cartridge.svg",
-          "light": "resources/light/cartridge.svg"
+          "dark": "extension/resources/dark/cartridge.svg",
+          "light": "extension/resources/light/cartridge.svg"
         }
       }
     ]
   },
-  "scripts": {},
-  "devDependencies": {},
-  "dependencies": {}
+  "lint-staged": {
+    "*.js": [
+      "eslint ./extension --fix",
+      "git add"
+    ]
+  },
+  "scripts": {
+    "test": "npm run -s test:lint && npm run -s test:unit",
+    "test:unit": "echo 'No Unit Tests'",
+    "test:lint": "eslint --ext .js ./extension --fix && echo '\n【ツ】CODE PERFECTION !!!\n'"
+  },
+  "devDependencies": {
+    "babel-eslint": "^10.1.0",
+    "eslint": "^8.7.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-prettier": "^4.0.0",
+    "lint-staged": "^12.1.7",
+    "prettier": "^2.5.1"
+  },
+  "dependencies": {
+    "vscode-nls-i18n": "^0.2.4"
+  }
 }
