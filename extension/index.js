@@ -11,6 +11,7 @@ const util = require('./util')
 // TODO: Add Context Menu Options to Overrides Panel: `DIFF ↑`, `DIFF ↓` & `Open All Overrides` to both of our Panels
 // TODO: Add event to clear Overrides Panel ( though I might want to ask about whether that is helpful, it might be handy to leave it alone )
 // TODO: Convert all hard coded UI text to Locale Variables for future translation support
+// TODO: Use Decorators for Tree View https://github.com/microsoft/vscode/issues/54938 https://github.com/microsoft/vscode/blob/main/extensions/git/src/decorationProvider.ts
 
 /**
  * Handle Activating Extension
@@ -19,6 +20,12 @@ const util = require('./util')
 function activate(context) {
   // Initialize Localization
   init(context.extensionPath)
+
+  // Handle Override Timeouts
+  let overrideTimeout
+
+  // Handle Reveal Timeouts
+  let revealTimeout
 
   // Store Current Opened File Name
   let currentEditorFileName
@@ -39,6 +46,9 @@ function activate(context) {
 
   // Handle File Switcher
   const selectTreeViewFile = () => {
+    clearTimeout(overrideTimeout)
+
+    // TODO: Figure out why this is running more than once on initial load
     // Exit if the Selected File is the same as the Active File
     if (currentEditorFileName !== undefined && currentEditorFileName === currentSelectedFileName) {
       return
@@ -91,7 +101,11 @@ function activate(context) {
         cartridgeOverridesProvider.load(found).then(() => {
           // Once we have populated the Override Panel, let's select the active override
           const selectedOverride = cartridgeOverridesProvider.getElement(found.cartridge)
-          sfccCartridgeOverridesView.reveal(selectedOverride, { focus: true, select: true, expand: true }).catch((err) => util.logger(err, 'error'))
+
+          clearTimeout(revealTimeout)
+          revealTimeout = setTimeout(() => {
+            sfccCartridgeOverridesView.reveal(selectedOverride, { focus: true, select: true, expand: true }).catch((err) => util.logger(err, 'error'))
+          }, 500)
         })
       } else {
         // Show Information Message
@@ -111,9 +125,10 @@ function activate(context) {
 
   // Check if the user clicked the Cartridge Icon in the File Tab list
   const checkOverrides = vscode.commands.registerCommand('extension.sfccCartridges.checkOverrides', (file) => {
-    if (file && file.path) {
+    if (file && file.path && currentEditorFileName !== file.path) {
       currentEditorFileName = file.path
-      selectTreeViewFile()
+      clearTimeout(overrideTimeout)
+      overrideTimeout = setTimeout(selectTreeViewFile, 10)
     }
   })
 
@@ -189,13 +204,14 @@ function activate(context) {
   context.subscriptions.push(
     vscode.workspace.onDidOpenTextDocument((document) => {
       // Make sure we have an active document in the editor
-      if (document && document.fileName) {
+      if (document && document.fileName && currentEditorFileName !== document.fileName) {
         // Get current Document File Name
         currentEditorFileName = document.fileName
 
         // Make sure our View is Visible and select the current file
         if (sfccCartridgesView.visible) {
-          selectTreeViewFile()
+          clearTimeout(overrideTimeout)
+          overrideTimeout = setTimeout(selectTreeViewFile, 10)
         }
       }
     })
@@ -205,13 +221,14 @@ function activate(context) {
   context.subscriptions.push(
     vscode.window.onDidChangeActiveTextEditor((editor) => {
       // Make sure we have an active document in the editor
-      if (editor && editor.document) {
+      if (editor && editor.document && currentEditorFileName !== editor.document.fileName) {
         // Get current Document File Name
         currentEditorFileName = editor.document.fileName
 
         // Make sure our View is Visible and select the current file
         if (sfccCartridgesView.visible) {
-          selectTreeViewFile()
+          clearTimeout(overrideTimeout)
+          overrideTimeout = setTimeout(selectTreeViewFile, 10)
         }
       }
     })
@@ -225,14 +242,16 @@ function activate(context) {
     // Check if our View is Visible and if we already had a file open
     if (view.visible && currentEditorFileName) {
       // Open File in Tree View
-      selectTreeViewFile()
-    } else if (view.visible && activeEditor && activeEditor.document && activeEditor.document.fileName) {
+      clearTimeout(overrideTimeout)
+      overrideTimeout = setTimeout(selectTreeViewFile, 10)
+    } else if (view.visible && activeEditor && activeEditor.document && currentEditorFileName !== activeEditor.document.fileName) {
       // Our View is Visible, but we did not have any previous files open with it, so let's get the current file
       currentEditorFileName = activeEditor.document.fileName
 
       // Let's give the editor a little bit to finish changing since we need to ask for file info
       // TODO: Figure out a less ... gross ... way of doing this
-      setTimeout(selectTreeViewFile, 1000)
+      clearTimeout(overrideTimeout)
+      overrideTimeout = setTimeout(selectTreeViewFile, 10)
     }
   })
 

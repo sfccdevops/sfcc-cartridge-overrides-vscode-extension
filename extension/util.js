@@ -86,11 +86,11 @@ const getWorkspace = (context) => {
     workspace = vscode.workspace.rootPath ? vscode.workspace.rootPath : path.dirname(context.fsPath)
   } else {
     // We have a Workspace, now let's figure out if it's single or multiroot
-    if (vscode.workspace.workspaceFolders.length === 1) {
+    if (vscode.workspace && vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length === 1) {
       // There was only one Workspace, so we can just use it
       root = vscode.workspace.workspaceFolders[0]
       workspace = root && root.uri ? root.uri.fsPath : null
-    } else if (context) {
+    } else if (context && vscode.workspace) {
       // There is more than one, so let's use the provided resource to figure out our root
       root = vscode.workspace.getWorkspaceFolder(context)
       workspace = root && root.uri ? root.uri.fsPath : null
