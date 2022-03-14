@@ -1,6 +1,13 @@
 .vscode/**
 .gitignore
-docs
 .github
 .editorconfig
+.eslintrc.js
+.gitattributes
+.gitignore
+.nvmrc
 *.vsix
+*.code-workspace
+CHANGELOG.md
+DEVELOPERS.md
+TROUBLESHOOTING.md

@@ -1,6 +1,7 @@
 'use strict'
 
 const vscode = require('vscode')
+const { init, localize } = require('vscode-nls-i18n')
 
 const util = require('./util')
 
@@ -12,7 +13,13 @@ class CartridgeOverridesProvider {
    * SFCC Cartridge Overrides Tree View Provider
    * @param {Object} treeData Array of Cartridge Tree Data
    */
-  constructor() {
+  constructor(context) {
+    // Initialize Localization
+    init(context.extensionPath)
+
+    // Establish VS Code Context
+    this.context = context
+
     // Track last opened file
     this.lastOpened = null
 
@@ -63,6 +70,11 @@ class CartridgeOverridesProvider {
     return this
   }
 
+  /**
+   * Generate Tree for Controller Files
+   * @param {object} data
+   * @returns object
+   */
   generateControllerTree(data) {
     const key = `${data.cartridge}_${data.name.replace(/[\/.]/g, '-')}`
     if (this.lastOpened === key) {
@@ -75,268 +87,275 @@ class CartridgeOverridesProvider {
     const checkControllers = () => {
       const routes = {}
 
-      return new Promise(resolve => data.overrides.slice().reverse().forEach(async (override, index) => {
-        // Open Document so we can get the text
-        const document = await vscode.workspace.openTextDocument(override.resourceUri)
+      return new Promise((resolve) =>
+        data.overrides
+          .slice()
+          .reverse()
+          .forEach(async (override) => {
+            // Open Document so we can get the text
+            const document = await vscode.workspace.openTextDocument(override.resourceUri)
 
-        // Break apart document into lines of text
-        const text = document.getText()
-        const lines = text.split('\n')
+            // Break apart document into lines of text
+            const text = document.getText()
+            const lines = text.split('\n')
 
-        // Standard Controller Routes ( server.get, server.post & server.use )
-        const foundGets = [...text.matchAll(/server\.get\(([^'"]+)?['"]([^'"]+)['"]/g)]
-        const foundPosts = [...text.matchAll(/server\.post\(([^'"]+)?['"]([^'"]+)['"]/g)]
-        const foundUses = [...text.matchAll(/server\.use\(([^'"]+)?['"]([^'"]+)['"]/g)]
+            // Standard Controller Routes ( server.get, server.post & server.use )
+            const foundGets = [...text.matchAll(/server\.get\(([^'"]+)?['"]([^'"]+)['"]/g)]
+            const foundPosts = [...text.matchAll(/server\.post\(([^'"]+)?['"]([^'"]+)['"]/g)]
+            const foundUses = [...text.matchAll(/server\.use\(([^'"]+)?['"]([^'"]+)['"]/g)]
 
-        // Override Controller Routes ( server.append, server.prepend & server.replace )
-        const foundAppends = [...text.matchAll(/server\.append\(([^'"]+)?['"]([^'"]+)['"]/g)]
-        const foundPrepends = [...text.matchAll(/server\.prepend\(([^'"]+)?['"]([^'"]+)['"]/g)]
-        const foundReplaces = [...text.matchAll(/server\.replace\(([^'"]+)?['"]([^'"]+)['"]/g)]
+            // Override Controller Routes ( server.append, server.prepend & server.replace )
+            const foundAppends = [...text.matchAll(/server\.append\(([^'"]+)?['"]([^'"]+)['"]/g)]
+            const foundPrepends = [...text.matchAll(/server\.prepend\(([^'"]+)?['"]([^'"]+)['"]/g)]
+            const foundReplaces = [...text.matchAll(/server\.replace\(([^'"]+)?['"]([^'"]+)['"]/g)]
 
-        foundGets.forEach(found => {
-          if (found.length > 2) {
-            const routeName = found[2]
+            foundGets.forEach((found) => {
+              if (found.length > 2) {
+                const routeName = found[2]
 
-            if (!Object.prototype.hasOwnProperty.call(routes, 'get')) {
-              routes['get'] = {}
-            }
+                if (!Object.prototype.hasOwnProperty.call(routes, 'get')) {
+                  routes['get'] = {}
+                }
 
-            if (!Object.prototype.hasOwnProperty.call(routes['get'], override.cartridge)) {
-              routes['get'][override.cartridge] = []
-            }
+                if (!Object.prototype.hasOwnProperty.call(routes['get'], override.cartridge)) {
+                  routes['get'][override.cartridge] = []
+                }
 
-            let lineNumber = null
+                let lineNumber = null
 
-            // Loop through lines of code looking for this record
-            for (let i = 0; i < lines.length; i++) {
-              const line = lines[i]
-              const nextLine = lines[i+1]
+                // Loop through lines of code looking for this record
+                for (let i = 0; i < lines.length; i++) {
+                  const line = lines[i]
+                  const nextLine = lines[i + 1]
 
-              // Some code formatters have the route name on the next line
-              if ((line.includes('server.get') && line.includes(routeName)) || (line.includes('server.get') && nextLine.includes(routeName))) {
-                lineNumber = i+1
-                break
+                  // Some code formatters have the route name on the next line
+                  if ((line.includes('server.get') && line.includes(routeName)) || (line.includes('server.get') && nextLine.includes(routeName))) {
+                    lineNumber = i + 1
+                    break
+                  }
+                }
+
+                routes['get'][override.cartridge].push({
+                  name: routeName,
+                  resourceUri: override.resourceUri,
+                  position: override.position,
+                  type: 'get',
+                  lineNumber: lineNumber,
+                  tooltip: localize('ui.openRoute.title', `server.get('${routeName}')`),
+                })
               }
-            }
-
-            routes['get'][override.cartridge].push({
-              name: routeName,
-              resourceUri: override.resourceUri,
-              position: override.position,
-              type: 'get',
-              lineNumber: lineNumber,
-              tooltip: `server.get('${routeName}')`
             })
-          }
-        })
 
-        foundPosts.forEach(found => {
-          if (found.length > 2) {
-            const routeName = found[2]
+            foundPosts.forEach((found) => {
+              if (found.length > 2) {
+                const routeName = found[2]
 
-            if (!Object.prototype.hasOwnProperty.call(routes, 'post')) {
-              routes['post'] = {}
-            }
+                if (!Object.prototype.hasOwnProperty.call(routes, 'post')) {
+                  routes['post'] = {}
+                }
 
-            if (!Object.prototype.hasOwnProperty.call(routes['post'], override.cartridge)) {
-              routes['post'][override.cartridge] = []
-            }
+                if (!Object.prototype.hasOwnProperty.call(routes['post'], override.cartridge)) {
+                  routes['post'][override.cartridge] = []
+                }
 
-            let lineNumber = null
+                let lineNumber = null
 
-            // Loop through lines of code looking for this record
-            for (let i = 0; i < lines.length; i++) {
-              const line = lines[i]
-              const nextLine = lines[i+1]
+                // Loop through lines of code looking for this record
+                for (let i = 0; i < lines.length; i++) {
+                  const line = lines[i]
+                  const nextLine = lines[i + 1]
 
-              // Some code formatters have the route name on the next line
-              if ((line.includes('server.post') && line.includes(routeName)) || (line.includes('server.post') && nextLine.includes(routeName))) {
-                lineNumber = i+1
-                break
+                  // Some code formatters have the route name on the next line
+                  if ((line.includes('server.post') && line.includes(routeName)) || (line.includes('server.post') && nextLine.includes(routeName))) {
+                    lineNumber = i + 1
+                    break
+                  }
+                }
+
+                routes['post'][override.cartridge].push({
+                  name: routeName,
+                  resourceUri: override.resourceUri,
+                  position: override.position,
+                  type: 'post',
+                  lineNumber: lineNumber,
+                  tooltip: localize('ui.openRoute.title', `server.post('${routeName}')`),
+                })
               }
-            }
-
-            routes['post'][override.cartridge].push({
-              name: routeName,
-              resourceUri: override.resourceUri,
-              position: override.position,
-              type: 'post',
-              lineNumber: lineNumber,
-              tooltip: `server.post('${routeName}')`
             })
-          }
-        })
 
-        foundUses.forEach(found => {
-          if (found.length > 2) {
-            const routeName = found[2]
+            foundUses.forEach((found) => {
+              if (found.length > 2) {
+                const routeName = found[2]
 
-            if (!Object.prototype.hasOwnProperty.call(routes, 'use')) {
-              routes['use'] = {}
-            }
+                if (!Object.prototype.hasOwnProperty.call(routes, 'use')) {
+                  routes['use'] = {}
+                }
 
-            if (!Object.prototype.hasOwnProperty.call(routes['use'], override.cartridge)) {
-              routes['use'][override.cartridge] = []
-            }
+                if (!Object.prototype.hasOwnProperty.call(routes['use'], override.cartridge)) {
+                  routes['use'][override.cartridge] = []
+                }
 
-            let lineNumber = null
+                let lineNumber = null
 
-            // Loop through lines of code looking for this record
-            for (let i = 0; i < lines.length; i++) {
-              const line = lines[i]
-              const nextLine = lines[i+1]
+                // Loop through lines of code looking for this record
+                for (let i = 0; i < lines.length; i++) {
+                  const line = lines[i]
+                  const nextLine = lines[i + 1]
 
-              // Some code formatters have the route name on the next line
-              if ((line.includes('server.use') && line.includes(routeName)) || (line.includes('server.use') && nextLine.includes(routeName))) {
-                lineNumber = i+1
-                break
+                  // Some code formatters have the route name on the next line
+                  if ((line.includes('server.use') && line.includes(routeName)) || (line.includes('server.use') && nextLine.includes(routeName))) {
+                    lineNumber = i + 1
+                    break
+                  }
+                }
+
+                routes['use'][override.cartridge].push({
+                  name: routeName,
+                  resourceUri: override.resourceUri,
+                  position: override.position,
+                  type: 'use',
+                  lineNumber: lineNumber,
+                  tooltip: localize('ui.openRoute.title', `server.use('${routeName}')`),
+                })
               }
-            }
-
-            routes['use'][override.cartridge].push({
-              name: routeName,
-              resourceUri: override.resourceUri,
-              position: override.position,
-              type: 'use',
-              lineNumber: lineNumber,
-              tooltip: `server.use('${routeName}')`
             })
-          }
-        })
 
-        foundAppends.forEach(found => {
-          if (found.length > 2) {
-            const routeName = found[2]
+            foundAppends.forEach((found) => {
+              if (found.length > 2) {
+                const routeName = found[2]
 
-            if (!Object.prototype.hasOwnProperty.call(routes, 'append')) {
-              routes['append'] = {}
-            }
+                if (!Object.prototype.hasOwnProperty.call(routes, 'append')) {
+                  routes['append'] = {}
+                }
 
-            if (!Object.prototype.hasOwnProperty.call(routes['append'], override.cartridge)) {
-              routes['append'][override.cartridge] = []
-            }
+                if (!Object.prototype.hasOwnProperty.call(routes['append'], override.cartridge)) {
+                  routes['append'][override.cartridge] = []
+                }
 
-            let lineNumber = null
+                let lineNumber = null
 
-            // Loop through lines of code looking for this record
-            for (let i = 0; i < lines.length; i++) {
-              const line = lines[i]
-              const nextLine = lines[i+1]
+                // Loop through lines of code looking for this record
+                for (let i = 0; i < lines.length; i++) {
+                  const line = lines[i]
+                  const nextLine = lines[i + 1]
 
-              // Some code formatters have the route name on the next line
-              if ((line.includes('server.append') && line.includes(routeName)) || (line.includes('server.append') && nextLine.includes(routeName))) {
-                lineNumber = i+1
-                break
+                  // Some code formatters have the route name on the next line
+                  if ((line.includes('server.append') && line.includes(routeName)) || (line.includes('server.append') && nextLine.includes(routeName))) {
+                    lineNumber = i + 1
+                    break
+                  }
+                }
+
+                routes['append'][override.cartridge].push({
+                  name: routeName,
+                  resourceUri: override.resourceUri,
+                  position: override.position,
+                  type: 'append',
+                  lineNumber: lineNumber,
+                  tooltip: localize('ui.openRoute.title', `server.append('${routeName}')`),
+                })
               }
-            }
-
-            routes['append'][override.cartridge].push({
-              name: routeName,
-              resourceUri: override.resourceUri,
-              position: override.position,
-              type: 'append',
-              lineNumber: lineNumber,
-              tooltip: `server.append('${routeName}')`
             })
-          }
-        })
 
-        foundPrepends.forEach(found => {
-          if (found.length > 2) {
-            const routeName = found[2]
+            foundPrepends.forEach((found) => {
+              if (found.length > 2) {
+                const routeName = found[2]
 
-            if (!Object.prototype.hasOwnProperty.call(routes, 'prepend')) {
-              routes['prepend'] = {}
-            }
+                if (!Object.prototype.hasOwnProperty.call(routes, 'prepend')) {
+                  routes['prepend'] = {}
+                }
 
-            if (!Object.prototype.hasOwnProperty.call(routes['prepend'], override.cartridge)) {
-              routes['prepend'][override.cartridge] = []
-            }
+                if (!Object.prototype.hasOwnProperty.call(routes['prepend'], override.cartridge)) {
+                  routes['prepend'][override.cartridge] = []
+                }
 
-            let lineNumber = null
+                let lineNumber = null
 
-            // Loop through lines of code looking for this record
-            for (let i = 0; i < lines.length; i++) {
-              const line = lines[i]
-              const nextLine = lines[i+1]
+                // Loop through lines of code looking for this record
+                for (let i = 0; i < lines.length; i++) {
+                  const line = lines[i]
+                  const nextLine = lines[i + 1]
 
-              // Some code formatters have the route name on the next line
-              if ((line.includes('server.prepend') && line.includes(routeName)) || (line.includes('server.prepend') && nextLine.includes(routeName))) {
-                lineNumber = i+1
-                break
+                  // Some code formatters have the route name on the next line
+                  if ((line.includes('server.prepend') && line.includes(routeName)) || (line.includes('server.prepend') && nextLine.includes(routeName))) {
+                    lineNumber = i + 1
+                    break
+                  }
+                }
+
+                routes['prepend'][override.cartridge].push({
+                  name: routeName,
+                  resourceUri: override.resourceUri,
+                  position: override.position,
+                  type: 'prepend',
+                  lineNumber: lineNumber,
+                  tooltip: localize('ui.openRoute.title', `server.prepend('${routeName}')`),
+                })
               }
-            }
-
-            routes['prepend'][override.cartridge].push({
-              name: routeName,
-              resourceUri: override.resourceUri,
-              position: override.position,
-              type: 'prepend',
-              lineNumber: lineNumber,
-              tooltip: `server.prepend('${routeName}')`
             })
-          }
-        })
 
-        foundReplaces.forEach(found => {
-          if (found.length > 2) {
-            const routeName = found[2]
+            foundReplaces.forEach((found) => {
+              if (found.length > 2) {
+                const routeName = found[2]
 
-            if (!Object.prototype.hasOwnProperty.call(routes, 'replace')) {
-              routes['replace'] = {}
-            }
+                if (!Object.prototype.hasOwnProperty.call(routes, 'replace')) {
+                  routes['replace'] = {}
+                }
 
-            if (!Object.prototype.hasOwnProperty.call(routes['replace'], override.cartridge)) {
-              routes['replace'][override.cartridge] = []
-            }
+                if (!Object.prototype.hasOwnProperty.call(routes['replace'], override.cartridge)) {
+                  routes['replace'][override.cartridge] = []
+                }
 
-            let lineNumber = null
+                let lineNumber = null
 
-            // Loop through lines of code looking for this record
-            for (let i = 0; i < lines.length; i++) {
-              const line = lines[i]
-              const nextLine = lines[i+1]
+                // Loop through lines of code looking for this record
+                for (let i = 0; i < lines.length; i++) {
+                  const line = lines[i]
+                  const nextLine = lines[i + 1]
 
-              // Some code formatters have the route name on the next line
-              if ((line.includes('server.replace') && line.includes(routeName)) || (line.includes('server.replace') && nextLine.includes(routeName))) {
-                lineNumber = i+1
-                break
+                  // Some code formatters have the route name on the next line
+                  if ((line.includes('server.replace') && line.includes(routeName)) || (line.includes('server.replace') && nextLine.includes(routeName))) {
+                    lineNumber = i + 1
+                    break
+                  }
+                }
+
+                routes['replace'][override.cartridge].push({
+                  name: routeName,
+                  resourceUri: override.resourceUri,
+                  position: override.position,
+                  type: 'replace',
+                  lineNumber: lineNumber,
+                  tooltip: localize('ui.openRoute.title', `server.replace('${routeName}')`),
+                })
               }
-            }
-
-            routes['replace'][override.cartridge].push({
-              name: routeName,
-              resourceUri: override.resourceUri,
-              position: override.position,
-              type: 'replace',
-              lineNumber: lineNumber,
-              tooltip: `server.replace('${routeName}')`
             })
-          }
-        })
 
-        return resolve(routes)
-      }))
+            return resolve(routes)
+          })
+      )
     }
 
     // Check all the property files line by line
-    checkControllers().then(overrideRoutes => {
+    checkControllers().then((overrideRoutes) => {
       // Start creation of File Tree
       data.overrides.forEach((override, index) => {
         const isSelected = data.cartridge === override.cartridge ? 1 : 0
         const children = []
+        const routeName = data.name.replace('.js', '')
 
         // Create Parent Tree Element
         const treeItem = {
-          name: data.name.replace('.js', ''),
+          name: routeName,
+          tooltip: localize('ui.toggle.title'),
           description: override.cartridge,
           isSelected: isSelected,
           sortOrder: index,
-          iconPath: index === data.overrides.length - 1 ? util.getIcon('controllers', isSelected) : util.getIcon('override', isSelected)
+          iconPath: index === data.overrides.length - 1 ? util.getIcon('controllers', isSelected) : util.getIcon('override', isSelected),
         }
 
         // Add any properties that were found to be overwritten as children
-        Object.keys(overrideRoutes).forEach(prop => {
+        Object.keys(overrideRoutes).forEach((prop) => {
           if (Object.prototype.hasOwnProperty.call(overrideRoutes[prop], override.cartridge)) {
             const propObj = overrideRoutes[prop][override.cartridge][0]
             const range = propObj.lineNumber ? new vscode.Range(new vscode.Position(propObj.lineNumber - 1, 0), new vscode.Position(propObj.lineNumber - 1, 0)) : null
@@ -351,7 +370,7 @@ class CartridgeOverridesProvider {
               contextValue: 'file',
               description: propObj.type,
               tooltip: propObj.tooltip,
-              iconPath: util.getIcon('route')
+              iconPath: util.getIcon('route'),
             })
           }
         })
@@ -365,6 +384,7 @@ class CartridgeOverridesProvider {
           treeItem.command = {
             command: 'vscode.open',
             arguments: [override.resourceUri],
+            title: localize('ui.openFile.title', treeItem.name),
           }
         }
 
@@ -387,7 +407,7 @@ class CartridgeOverridesProvider {
    * @returns object
    */
   generateModelTree(data) {
-    // TODO: Expand this to provide custom tree rendering of Model Overrides
+    // TODO: Possibly expand this to provide custom tree rendering of Model Overrides
     return this.defaultGenerator(data, 'models')
   }
 
@@ -407,46 +427,51 @@ class CartridgeOverridesProvider {
     // Loop through overrides in reverse to read files in order of override stack
     const checkProperties = () => {
       const properties = {}
-      return new Promise(resolve => data.overrides.slice().reverse().forEach(async (override, index) => {
-        // Open Document so we can get the text
-        const document = await vscode.workspace.openTextDocument(override.resourceUri)
+      return new Promise((resolve) =>
+        data.overrides
+          .slice()
+          .reverse()
+          .forEach(async (override) => {
+            // Open Document so we can get the text
+            const document = await vscode.workspace.openTextDocument(override.resourceUri)
 
-        // Break apart document into lines of text
-        const lines = document.getText().split('\n')
+            // Break apart document into lines of text
+            const lines = document.getText().split('\n')
 
-        // Loop through lines of code
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i]
-          const prop = line.split('=')
+            // Loop through lines of code
+            for (let i = 0; i < lines.length; i++) {
+              const line = lines[i]
+              const prop = line.split('=')
 
-          if (prop.length > 1) {
-            const propKey = prop[0].trim()
+              if (prop.length > 1) {
+                const propKey = prop[0].trim()
 
-            if (!Object.prototype.hasOwnProperty.call(properties, propKey)) {
-              properties[propKey] = {}
+                if (!Object.prototype.hasOwnProperty.call(properties, propKey)) {
+                  properties[propKey] = {}
+                }
+
+                if (!Object.prototype.hasOwnProperty.call(properties[propKey], override.cartridge)) {
+                  properties[propKey][override.cartridge] = []
+                }
+
+                properties[propKey][override.cartridge].push({
+                  name: propKey,
+                  resourceUri: override.resourceUri,
+                  lineNumber: i + 1,
+                  position: override.position,
+                })
+              }
             }
 
-            if (!Object.prototype.hasOwnProperty.call(properties[propKey], override.cartridge)) {
-              properties[propKey][override.cartridge] = []
-            }
-
-            properties[propKey][override.cartridge].push({
-              name: propKey,
-              resourceUri: override.resourceUri,
-              lineNumber: i + 1,
-              position: override.position
-            })
-          }
-        }
-
-        return resolve(properties)
-      }))
+            return resolve(properties)
+          })
+      )
     }
 
     // Check all the property files line by line
-    checkProperties().then(overrideProperties => {
+    checkProperties().then((overrideProperties) => {
       // Check each property for overrides
-      Object.keys(overrideProperties).forEach(prop => {
+      Object.keys(overrideProperties).forEach((prop) => {
         // If there are no overrides, let's do some cleanup
         if (Object.keys(overrideProperties[prop]).length < 2) {
           delete overrideProperties[prop]
@@ -464,25 +489,28 @@ class CartridgeOverridesProvider {
           description: override.cartridge,
           isSelected: isSelected,
           sortOrder: index,
-          iconPath: index === data.overrides.length - 1 ? util.getIcon('templates', isSelected) : util.getIcon('override', isSelected)
+          iconPath: index === data.overrides.length - 1 ? util.getIcon('templates', isSelected) : util.getIcon('override', isSelected),
         }
 
         // Add any properties that were found to be overwritten as children
-        Object.keys(overrideProperties).forEach(prop => {
+        Object.keys(overrideProperties).forEach((prop) => {
           if (Object.prototype.hasOwnProperty.call(overrideProperties[prop], override.cartridge)) {
             const propObj = overrideProperties[prop][override.cartridge][0]
-            const range = new vscode.Range(new vscode.Position(propObj.lineNumber - 1, 0), new vscode.Position(propObj.lineNumber - 1, 0));
+            const range = new vscode.Range(new vscode.Position(propObj.lineNumber - 1, 0), new vscode.Position(propObj.lineNumber - 1, 0))
 
             children.push({
               command: {
                 command: 'vscode.open',
-                arguments: [propObj.resourceUri, {
-                  selection: new vscode.Selection(range.start, range.end)
-                }],
+                arguments: [
+                  propObj.resourceUri,
+                  {
+                    selection: new vscode.Selection(range.start, range.end),
+                  },
+                ],
               },
               name: propObj.name,
               contextValue: 'file',
-              iconPath: util.getIcon('property')
+              iconPath: util.getIcon('property'),
             })
           }
         })
@@ -518,7 +546,7 @@ class CartridgeOverridesProvider {
    * @returns object
    */
   generateScriptTree(data) {
-    // TODO: Expand this to provide custom tree rendering of Script Overrides
+    // TODO: Possibly expand this to provide custom tree rendering of Model Overrides
     return this.defaultGenerator(data, 'scripts')
   }
 
@@ -547,15 +575,24 @@ class CartridgeOverridesProvider {
     }
   }
 
-  getParent(element) {
-    return element.parent
-  }
-
+  /**
+   * Get Element from Tree with Matching Cartridge Name
+   * @param {string} cartridge
+   * @returns Object
+   */
   getElement(cartridge) {
-    // TODO: Figure out what this only works on some tabs
     return this.treeData.find((item) => {
       return item.description === cartridge
     })
+  }
+
+  /**
+   * Get Parent Tree Node for Given Element
+   * @param {Object} element
+   * @returns Object
+   */
+  getParent(element) {
+    return element.parent
   }
 
   /**
@@ -605,6 +642,9 @@ class CartridgeOverridesProvider {
     }
   }
 
+  /**
+   * Handle Reset of Data Tree
+   */
   reset() {
     this.treeData = []
     this._onDidChangeTreeData.fire(undefined)

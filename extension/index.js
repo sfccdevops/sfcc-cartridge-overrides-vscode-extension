@@ -8,11 +8,6 @@ const Cartridges = require('./Cartridges')
 const CartridgesProvider = require('./CartridgesProvider')
 const util = require('./util')
 
-// TODO: Add Context Menu Options to Overrides Panel: `DIFF ↑`, `DIFF ↓` & `Open All Overrides` to both of our Panels
-// TODO: Add event to clear Overrides Panel ( though I might want to ask about whether that is helpful, it might be handy to leave it alone )
-// TODO: Convert all hard coded UI text to Locale Variables for future translation support
-// TODO: Use Decorators for Tree View https://github.com/microsoft/vscode/issues/54938 https://github.com/microsoft/vscode/blob/main/extensions/git/src/decorationProvider.ts
-
 /**
  * Handle Activating Extension
  * @param {*} context
@@ -37,8 +32,8 @@ function activate(context) {
   const cartridges = new Cartridges(context)
 
   // Initialize Tree View Providers
-  const cartridgesViewProvider = new CartridgesProvider()
-  const cartridgeOverridesProvider = new CartridgeOverridesProvider()
+  const cartridgesViewProvider = new CartridgesProvider(context)
+  const cartridgeOverridesProvider = new CartridgeOverridesProvider(context)
 
   // Register Tree Data Providers to Workspace
   const sfccCartridgesView = vscode.window.createTreeView('sfccCartridgesView', { treeDataProvider: cartridgesViewProvider, showCollapseAll: true })
@@ -48,7 +43,6 @@ function activate(context) {
   const selectTreeViewFile = () => {
     clearTimeout(overrideTimeout)
 
-    // TODO: Figure out why this is running more than once on initial load
     // Exit if the Selected File is the same as the Active File
     if (currentEditorFileName !== undefined && currentEditorFileName === currentSelectedFileName) {
       return
@@ -140,7 +134,7 @@ function activate(context) {
     let title
 
     // Sanity check to make sure we have exactly two files selected
-    if (selected && choices && choices.length === 2) {
+    if (selected && choices && choices.length === 2 && choices[0].command && choices[1].command && choices[0].command.arguments && choices[1].command.arguments) {
       if (choices[0].sortOrder < choices[1].sortOrder) {
         // Files were selected in reverse order, let's update it
         before = choices[1].command.arguments[0]
@@ -243,15 +237,14 @@ function activate(context) {
     if (view.visible && currentEditorFileName) {
       // Open File in Tree View
       clearTimeout(overrideTimeout)
-      overrideTimeout = setTimeout(selectTreeViewFile, 10)
+      overrideTimeout = setTimeout(selectTreeViewFile, 100)
     } else if (view.visible && activeEditor && activeEditor.document && currentEditorFileName !== activeEditor.document.fileName) {
       // Our View is Visible, but we did not have any previous files open with it, so let's get the current file
       currentEditorFileName = activeEditor.document.fileName
 
       // Let's give the editor a little bit to finish changing since we need to ask for file info
-      // TODO: Figure out a less ... gross ... way of doing this
       clearTimeout(overrideTimeout)
-      overrideTimeout = setTimeout(selectTreeViewFile, 10)
+      overrideTimeout = setTimeout(selectTreeViewFile, 100)
     }
   })
 

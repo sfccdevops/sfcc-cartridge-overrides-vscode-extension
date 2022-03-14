@@ -7,7 +7,7 @@
  * @param {string} [namespace] - Optional namespace for cached items. Defaults to "cache"
  * @returns {Cache} The cache object
  */
-let Cache = function (context, namespace) {
+const Cache = function (context, namespace) {
   if (!context) {
     return undefined
   }

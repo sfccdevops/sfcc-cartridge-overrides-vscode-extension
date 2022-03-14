@@ -11,8 +11,11 @@
   "command.refreshCartridges.title": "Refresh Cartridges",
   "command.viewOverrides.title": "View Overrides",
   "config.properties.overridesOnly.description": "Only show Cartridges and Files with Overrides.",
+  "config.properties.path.changed": "We've detected a change to 'cartridgesPath' in your dw.json. Update SFCC Cartridge Overrides?",
   "config.properties.path.description": "SFCC Cartridge Path for Storefront. List of cartridges separated by colon.",
   "config.properties.path.error": "Invalid Path Detected. Supports [a-zA-Z0-9_:-]",
+  "config.properties.path.found": "We've found 'cartridgesPath' in your dw.json. Update SFCC Cartridge Overrides?",
+  "config.properties.path.updated": "SFCC Cartridge Overrides Cartridge Path Updated",
   "debug.logger.cartridgesMissing": "Cartridge Missing from Workspace: {0}",
   "debug.logger.cartridgesSummary": "Found {0} files in {1} Cartridges in Workspace",
   "debug.logger.fetchingCartridges": "Fetching SFCC Cartridges from Workspace ...",
@@ -34,5 +37,10 @@
   "panel.cartridges.title": "Cartridge Path",
   "panel.overrides.title": "Overrides",
   "panel.welcome.message": "Before we get started, we need to configure some Settings for this Extension to work.\n[Open Settings](command:extension.sfccCartridges.openSettings)\nNeed more information? [Get Help](https://github.com/redvanworkshop/sfcc-cartridge-overrides-vscode-extension#readme).",
-  "panel.welcome.title": "Getting Started"
+  "panel.welcome.title": "Getting Started",
+  "ui.dialog.no": "No",
+  "ui.dialog.yes": "Yes",
+  "ui.openFile.title": "Open: {0}",
+  "ui.openRoute.title": "Open Route: {0}",
+  "ui.toggle.title": "Collapse / Expand"
 }

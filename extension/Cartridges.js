@@ -21,8 +21,6 @@ class Cartridges {
     this.cacheFiles = new Cache(context, 'files')
     this.cacheOverrides = new Cache(context, 'overrides')
 
-    // TODO: Figure out what other things I can use cache for to optimize rendering
-
     // Establish VS Code Context
     this.context = context
 
@@ -37,6 +35,16 @@ class Cartridges {
 
     // Do initial load of data using cache
     this.refresh(true)
+
+    this.getCartridgesFromConfig().then((updateCartridgePath) => {
+      if (updateCartridgePath) {
+        // Refetch Cartridge since the settings changed
+        this.cartridgesPath = this.getCartridgesPath()
+
+        // Do initial load of data using cache
+        this.refresh(true)
+      }
+    })
   }
 
   /**
@@ -123,12 +131,9 @@ class Cartridges {
    * @returns {Object} Filtered Cartridge Array
    */
   getCartridgesPath() {
-    // TODO: Check if dw.json has cartridgePath defined and use it as the default ( prompt user to approve using it )
-    // TODO: Add hooks in to check the dw.json cartridgePath against the config path and see if they want to update it if dw.json changed
-
     // Get Cartridge Path from Settings and Convert it to an Array
     const cartridgePath = vscode.workspace.getConfiguration().get('extension.sfccCartridges.path')
-    const cartridgesArray = cartridgePath.split(':')
+    const cartridgesArray = cartridgePath ? cartridgePath.split(':') : []
 
     // Debug Cartridge Path
     util.logger(localize('debug.logger.path', cartridgesArray.join('\n- ')))
@@ -138,6 +143,62 @@ class Cartridges {
 
     // Strip Ignored Cartridges from Cartridge List
     return cartridgesArray.filter((cartridge) => ignoredCartridges.indexOf(cartridge) === -1)
+  }
+
+  getCartridgesFromConfig() {
+    return new Promise((resolve) => {
+      // Get current cartridge path from settings
+      const cartridgePath = vscode.workspace.getConfiguration().get('extension.sfccCartridges.path')
+
+      // Find dw.json file in root
+      vscode.workspace.findFiles(new vscode.RelativePattern(this.workspacePath, 'dw.{json,js}')).then((dwConfig) => {
+        // Make sure we found a file
+        if (dwConfig && dwConfig[0].path) {
+          // Read file and get its content
+          vscode.workspace.openTextDocument(dwConfig[0].path).then((config) => {
+            // Get Text
+            const configText = config.getText()
+
+            // Try to parse the JSON
+            try {
+              const configJson = JSON.parse(configText)
+
+              // Check if cartridgesPath was defined in the dw.json and if it is different than the one in VS Code Settings
+              if (configJson.cartridgesPath && cartridgePath !== configJson.cartridgesPath && configJson.cartridgesPath !== '') {
+                // Check which message to show
+                const message = cartridgePath && cartridgePath.length > 0 ? localize('config.properties.path.changed') : localize('config.properties.path.found')
+
+                // Looks like the local dw.json is differnt than VS Code Settings, check if we should save the dw.json into VS Code
+                vscode.window.showInformationMessage(message, localize('ui.dialog.yes'), localize('ui.dialog.no')).then((answer) => {
+                  if (answer === localize('ui.dialog.yes')) {
+                    // Update VS Code Settings and reload
+                    vscode.workspace
+                      .getConfiguration()
+                      .update('extension.sfccCartridges.path', configJson.cartridgesPath, vscode.ConfigurationTarget.Global)
+                      .then(() => {
+                        // Let the developer know their settings have been saved
+                        vscode.window.showInformationMessage(localize('config.properties.path.updated'))
+                        return resolve(true)
+                      })
+                  } else {
+                    return resolve(false)
+                  }
+                })
+              } else {
+                // Config was present, but no cartridge path found
+                return resolve(false)
+              }
+            } catch (err) {
+              console.error(err)
+              return resolve(false)
+            }
+          })
+        } else {
+          // No file to load
+          return resolve(false)
+        }
+      })
+    })
   }
 
   /**

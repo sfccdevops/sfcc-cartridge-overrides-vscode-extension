@@ -10,9 +10,12 @@ class CartridgesProvider {
    * SFCC Cartridge Tree View Provider
    * @param {Object} treeData Array of Cartridge Tree Data
    */
-  constructor(treeData) {
+  constructor(context) {
+    // Establish VS Code Context
+    this.context = context
+
     // Populate Tree with Data
-    this.treeData = treeData
+    this.treeData = null
 
     // Create Custom Event Listener
     this._onDidChangeTreeData = new vscode.EventEmitter()

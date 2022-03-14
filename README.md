@@ -1,36 +1,33 @@
-![Logo](https://explorer-exclude.s3.amazonaws.com/logo.png?v=1.2.0)
+![Logo](https://red-van-workshop.s3.us-east-1.amazonaws.com/logo.png "Logo")
 
-
-SFCC Cartridge Overrides VS Code Extension
-===
-
-## This Extension is a Work in Progress
-
-Extension Development
+SFCC Cartridge Overrides - VS Code Extension
 ---
 
-> Before this extension is available in the VS Code Marketplace, you can test it manually:
+> VS Code Extension to Display SFCC Cartridge Overrides
 
-1. Open File `extension.code-workspace` in VS Code
-2. Run `npm install` in VS Code Terminal
-3. Press `F5` to test extension in a new VS Code window
+![screenshot](https://via.placeholder.com/480x320?text=PLACEHOLDER)
 
-NOTE: The first time you press `F5` it may launch in an empty workspace. You will likely need to open your SFCC project into this new VS Code window.
+- [X] Feature #1
+- [X] Feature #2
+- [X] Feature #3
+- [X] Feature #4
+- [X] Feature #5
 
-Multilingual Support
+Usage
 ---
 
-> Want this extension in another language? Translations for [VS Code Supported Locales](https://code.visualstudio.com/docs/getstarted/locales#_available-locales) can easily be added:
+#### Feature Title
 
-**To make a Translation:**
+Feature Description
 
-1. Open `package.nls.json`
-2. Save as a new file with language code, e.g. `Spanish` would be `package.nls.es.json` ( use Locale code from VS Code Supported Locales )
-3. Update JSON Values with your custom language
-4. Double check everything works
-5. Submit a Pull Request with a new translation file
+![screenshot](https://via.placeholder.com/480x320?text=PLACEHOLDER)
 
-POSSIBLE LANGUAGES: English, Simplified Chinese, Traditional Chinese, French, German, Italian, Spanish, Japanese, Korean, Russian, Bulgarian, Hungarian, Portuguese & Turkish
+Need Help?
+---
+
+> Check out or Troubleshooting Page for help with any known issues, or to report new ones.
+
+[![Create Issue](https://img.shields.io/badge/Get_Help-Troubleshooting-red.svg?style=for-the-badge&logo=github&logoColor=ffffff&logoWidth=16)](https://github.com/redvanworkshop/sfcc-cartridge-overrides-vscode-extension/blob/develop/TROUBLESHOOTING.md)
 
 About Us
 ---
