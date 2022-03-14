@@ -25,7 +25,7 @@ Our extension uses a custom ` extension.sfccCartridges.path` setting. VS Code le
 
 However you choose to manage your VS Code Workspaces, this is the setting you would need to add to make the magic happen.
 
-```json
+```jsonc
 {
     // Add this to your workspace settings
     "extension.sfccCartridges.path": "your:cartridge:path"
