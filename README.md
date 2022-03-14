@@ -1,11 +1,10 @@
-![Logo](https://red-van-workshop.s3.us-east-1.amazonaws.com/logo.png "Logo")
+![Logo](https://red-van-workshop.s3.us-east-1.amazonaws.com/logo.png "Logo") ![logo](extension/resources/icon.png)
+
 
 SFCC Cartridge Overrides - VS Code Extension
 ---
 
 > VS Code Extension to Display SFCC Cartridge Overrides
-
-![logo](extension/resources/icon.png)
 
 * Custom Panel for Displaying SFCC Cartridges with Overrides
 * Uses your Cartridge Path to Determine Override Order
@@ -26,8 +25,8 @@ Cartridge Path Panel
 
 #### Indicator Meanings:
 
-* `↑` Indicators how many Overrides were found Left of the Selected Cartridge
-* `↓` Indicators how many Overrides were found Right of the Selected Cartridge
+* `↑` Indicates how many Overrides were found Left of the Selected Cartridge
+* `↓` Indicates how many Overrides were found Right of the Selected Cartridge
 * On a Folder, `↑` & `↓` indicate the Total Number of Overrides Within the Folder
 * On a File, `↑` & `↓` indicate the Total Number of Overrides in the Cartridge Path
 
