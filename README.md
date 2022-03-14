@@ -1,4 +1,4 @@
-![Logo](https://red-van-workshop.s3.us-east-1.amazonaws.com/logo.png "Logo") ![logo](extension/resources/icon.png)
+![Logo](https://red-van-workshop.s3.us-east-1.amazonaws.com/logo.png "Logo")
 
 
 SFCC Cartridge Overrides - VS Code Extension
