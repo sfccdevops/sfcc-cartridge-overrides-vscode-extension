@@ -22,8 +22,8 @@
     "url": "https://github.com/redvanworkshop/sfcc-cartridge-overrides-vscode-extension/issues"
   },
   "engines": {
-    "vscode": "^1.46.0",
-    "node": "^14.17.0"
+    "vscode": "^1.60.0",
+    "node": "^14.19.0"
   },
   "keywords": [
     "salesforce",
