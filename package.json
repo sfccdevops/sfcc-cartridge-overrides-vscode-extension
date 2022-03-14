@@ -8,8 +8,8 @@
   "categories": [
     "Other"
   ],
-  "main": "./extension",
-  "icon": "resources/icon.png",
+  "main": "extension",
+  "icon": "extension/resources/icon.png",
   "galleryBanner": {
     "color": "#191919",
     "theme": "dark"
