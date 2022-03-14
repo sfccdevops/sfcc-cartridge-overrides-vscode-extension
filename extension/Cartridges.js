@@ -153,7 +153,7 @@ class Cartridges {
       // Find dw.json file in root
       vscode.workspace.findFiles(new vscode.RelativePattern(this.workspacePath, 'dw.{json,js}')).then((dwConfig) => {
         // Make sure we found a file
-        if (dwConfig && dwConfig[0].path) {
+        if (dwConfig && typeof dwConfig[0] !== 'undefined' && typeof dwConfig[0].path !== 'undefined') {
           // Read file and get its content
           vscode.workspace.openTextDocument(dwConfig[0].path).then((config) => {
             // Get Text

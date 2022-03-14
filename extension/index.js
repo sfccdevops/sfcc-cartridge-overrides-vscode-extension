@@ -8,6 +8,8 @@ const Cartridges = require('./Cartridges')
 const CartridgesProvider = require('./CartridgesProvider')
 const util = require('./util')
 
+const WelcomePane = require('./welcome')
+
 /**
  * Handle Activating Extension
  * @param {*} context
@@ -15,6 +17,20 @@ const util = require('./util')
 function activate(context) {
   // Initialize Localization
   init(context.extensionPath)
+
+  // Get Extension Version Info
+  const currentVersion = context.globalState.get('sfcc-cartridge-overrides.version')
+  const packageVersion = vscode.extensions.getExtension('RedVanWorkshop.sfcc-cartridge-overrides').packageJSON.version
+
+  // Check if there was a recent change to installed version
+  if (currentVersion !== packageVersion) {
+    // Update version number so we don't show this again until next update
+    context.globalState.update('sfcc-cartridge-overrides.version', packageVersion)
+
+    // Show Welcome Modal since this is a new version or install
+    const welcome = new WelcomePane(context)
+    welcome.show()
+  }
 
   // Handle Override Timeouts
   let overrideTimeout
@@ -66,15 +82,17 @@ function activate(context) {
         const isFile = index === max
 
         // Use native VS Code Tree View to Expand Node Element
-        sfccCartridgesView
-          .reveal(nodes[index], { focus: isFile, select: isFile, expand: true })
-          .then(() => {
-            // Check if we need to expand more of the Tree View
-            if (index < max) {
-              revealCartridgeFile(index + 1)
-            }
-          })
-          .catch((err) => util.logger(err, 'error'))
+        if (sfccCartridgesView) {
+          sfccCartridgesView
+            .reveal(nodes[index], { focus: isFile, select: isFile, expand: true })
+            .then(() => {
+              // Check if we need to expand more of the Tree View
+              if (index < max) {
+                revealCartridgeFile(index + 1)
+              }
+            })
+            .catch((err) => util.logger(err, 'error'))
+        }
       }
 
       // If we found a match, reveal it in the tree
@@ -98,7 +116,9 @@ function activate(context) {
 
           clearTimeout(revealTimeout)
           revealTimeout = setTimeout(() => {
-            sfccCartridgeOverridesView.reveal(selectedOverride, { focus: true, select: true, expand: true }).catch((err) => util.logger(err, 'error'))
+            if (sfccCartridgeOverridesView) {
+              sfccCartridgeOverridesView.reveal(selectedOverride, { focus: true, select: true, expand: true }).catch((err) => util.logger(err, 'error'))
+            }
           }, 500)
         })
       } else {
@@ -122,7 +142,7 @@ function activate(context) {
     if (file && file.path && currentEditorFileName !== file.path) {
       currentEditorFileName = file.path
       clearTimeout(overrideTimeout)
-      overrideTimeout = setTimeout(selectTreeViewFile, 10)
+      overrideTimeout = setTimeout(selectTreeViewFile, 100)
     }
   })
 
@@ -203,9 +223,9 @@ function activate(context) {
         currentEditorFileName = document.fileName
 
         // Make sure our View is Visible and select the current file
-        if (sfccCartridgesView.visible) {
+        if (sfccCartridgesView && sfccCartridgesView.visible) {
           clearTimeout(overrideTimeout)
-          overrideTimeout = setTimeout(selectTreeViewFile, 10)
+          overrideTimeout = setTimeout(selectTreeViewFile, 100)
         }
       }
     })
@@ -220,33 +240,35 @@ function activate(context) {
         currentEditorFileName = editor.document.fileName
 
         // Make sure our View is Visible and select the current file
-        if (sfccCartridgesView.visible) {
+        if (sfccCartridgesView && sfccCartridgesView.visible) {
           clearTimeout(overrideTimeout)
-          overrideTimeout = setTimeout(selectTreeViewFile, 10)
+          overrideTimeout = setTimeout(selectTreeViewFile, 100)
         }
       }
     })
   )
 
   // Check if our Cartridge View has Changed Visibility
-  sfccCartridgesView.onDidChangeVisibility((view) => {
-    // Get Active Editor so we can check for open files
-    const activeEditor = vscode.window.activeTextEditor
+  if (sfccCartridgesView) {
+    sfccCartridgesView.onDidChangeVisibility((view) => {
+      // Get Active Editor so we can check for open files
+      const activeEditor = vscode.window.activeTextEditor
 
-    // Check if our View is Visible and if we already had a file open
-    if (view.visible && currentEditorFileName) {
-      // Open File in Tree View
-      clearTimeout(overrideTimeout)
-      overrideTimeout = setTimeout(selectTreeViewFile, 100)
-    } else if (view.visible && activeEditor && activeEditor.document && currentEditorFileName !== activeEditor.document.fileName) {
-      // Our View is Visible, but we did not have any previous files open with it, so let's get the current file
-      currentEditorFileName = activeEditor.document.fileName
+      // Check if our View is Visible and if we already had a file open
+      if (view.visible && currentEditorFileName) {
+        // Open File in Tree View
+        clearTimeout(overrideTimeout)
+        overrideTimeout = setTimeout(selectTreeViewFile, 100)
+      } else if (view.visible && activeEditor && activeEditor.document && currentEditorFileName !== activeEditor.document.fileName) {
+        // Our View is Visible, but we did not have any previous files open with it, so let's get the current file
+        currentEditorFileName = activeEditor.document.fileName
 
-      // Let's give the editor a little bit to finish changing since we need to ask for file info
-      clearTimeout(overrideTimeout)
-      overrideTimeout = setTimeout(selectTreeViewFile, 100)
-    }
-  })
+        // Let's give the editor a little bit to finish changing since we need to ask for file info
+        clearTimeout(overrideTimeout)
+        overrideTimeout = setTimeout(selectTreeViewFile, 100)
+      }
+    })
+  }
 
   // Update VS Code Extension Subscriptions
   context.subscriptions.push(cartridgeListUpdated)
