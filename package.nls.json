@@ -36,7 +36,7 @@
   "panel.cartridges.missing.tooltip": "⚠ Cartridge Missing from Workspace",
   "panel.cartridges.title": "Cartridge Path",
   "panel.overrides.title": "Overrides",
-  "panel.welcome.message": "Before we get started, we need to configure some Settings for this Extension to work.\n[Open Settings](command:extension.sfccCartridges.openSettings)\nNeed more information? [Get Help](https://github.com/redvanworkshop/sfcc-cartridge-overrides-vscode-extension#readme).",
+  "panel.welcome.message": "Before we get started, we need to configure some Settings for this Extension to work.\n[Open Settings](command:extension.sfccCartridges.openSettings)\nNeed more information? [Get Help](https://github.com/sfccdevops/sfcc-cartridge-overrides-vscode-extension#readme).",
   "panel.welcome.title": "Getting Started",
   "ui.dialog.no": "No",
   "ui.dialog.yes": "Yes",

@@ -1,5 +1,4 @@
-![Logo](https://red-van-workshop.s3.us-east-1.amazonaws.com/logo.png "Logo")
-
+![Logo](https://sfccdevops.s3.amazonaws.com/logo-128.png "Logo")
 
 SFCC Cartridge Overrides - VS Code Extension
 ---
@@ -60,11 +59,9 @@ Need Help?
 
 > Check out or Troubleshooting Page for help with any known issues or report new ones.
 
-[![Create Issue](https://img.shields.io/badge/Get_Help-Troubleshooting-red.svg?style=for-the-badge&logo=github&logoColor=ffffff&logoWidth=16)](https://github.com/redvanworkshop/sfcc-cartridge-overrides-vscode-extension/blob/develop/TROUBLESHOOTING.md)
+[![Create Issue](https://img.shields.io/badge/Get_Help-Troubleshooting-red.svg?style=for-the-badge&logo=github&logoColor=ffffff&logoWidth=16)](https://github.com/sfccdevops/sfcc-cartridge-overrides-vscode-extension/blob/develop/TROUBLESHOOTING.md)
 
-About Us
+Disclaimer
 ---
 
-This extension was developed and maintained by [Peter Schmalfeldt](https://peterschmalfeldt.com), a Senior SFCC Developer & Open Source Advocate at Red Van Workshop.
-
-[Red Van Workshop](https://redvanworkshop.com/) works with Digital Commerce Retailers who want to get things done.  Our developers enjoy publishing [Open Source](https://github.com/redvanworkshop) solutions to everyday problems.
+> The trademarks and product names of Salesforce®, including the mark Salesforce®, are the property of Salesforce.com. SFCC DevOps is not affiliated with Salesforce.com, nor does Salesforce.com sponsor or endorse the SFCC DevOps products or website. The use of the Salesforce® trademark on this project does not indicate an endorsement, recommendation, or business relationship between Salesforce.com and SFCC DevOps.
