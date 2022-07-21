@@ -1,10 +1,10 @@
 {
   "name": "sfcc-cartridge-overrides",
   "displayName": "SFCC Cartridge Overrides",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "VS Code Extension to Display SFCC Cartridge Overrides",
   "license": "MIT",
-  "publisher": "SFCCDevOps",
+  "publisher": "PeterSchmalfeldt",
   "categories": [
     "Other"
   ],
