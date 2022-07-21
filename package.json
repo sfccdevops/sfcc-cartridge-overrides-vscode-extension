@@ -8,7 +8,7 @@
   "categories": [
     "Other"
   ],
-  "main": "extension",
+  "main": "extension/index.js",
   "icon": "extension/resources/icon.png",
   "galleryBanner": {
     "color": "#191919",
