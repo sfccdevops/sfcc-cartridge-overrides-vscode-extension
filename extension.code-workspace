@@ -7,6 +7,8 @@
 	"settings": {
     "window.title": "VS Code Extension${separator}SFCC Cartridge Overrides${separator}${activeEditorShort}",
 		"cSpell.words": [
+			"mikepenz",
+			"pjson",
 			"sfra"
 		]
 	}

@@ -7,6 +7,7 @@ const CartridgeOverridesProvider = require('./CartridgeOverridesProvider')
 const Cartridges = require('./Cartridges')
 const CartridgesProvider = require('./CartridgesProvider')
 const util = require('./util')
+const { SEP } = require('./constants')
 
 const WelcomePane = require('./welcome')
 
@@ -123,7 +124,7 @@ function activate(context) {
         })
       } else {
         // Show Information Message
-        vscode.window.showInformationMessage(localize('command.checkOverrides.noneFound', currentSelectedFileName.substring(currentSelectedFileName.lastIndexOf('/') + 1)))
+        vscode.window.showInformationMessage(localize('command.checkOverrides.noneFound', currentSelectedFileName.substring(currentSelectedFileName.lastIndexOf(SEP) + 1)))
       }
     }
   }

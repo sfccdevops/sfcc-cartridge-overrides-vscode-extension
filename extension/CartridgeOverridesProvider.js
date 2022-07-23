@@ -4,6 +4,7 @@ const vscode = require('vscode')
 const { init, localize } = require('vscode-nls-i18n')
 
 const util = require('./util')
+const { REGEXP_PATH } = require('./constants')
 
 /**
  * SFCC Cartridge Overrides Tree View Provider
@@ -33,12 +34,13 @@ class CartridgeOverridesProvider {
 
   /**
    * Default Tree Generator
-   * @param {Object} data Data to Generat Tree
+   * @param {Object} data Data to Generate Tree
    * @param {String} type Tree Type [controllers, models, templates, scripts, properties]
    * @returns Object
    */
   defaultGenerator(data, type) {
-    const key = `${data.cartridge}_${data.name.replace(/[\/.]/g, '-')}`
+    const key = `${data.cartridge}_${data.name.replace(REGEXP_PATH, '-')}`
+
     if (this.lastOpened === key) {
       return
     }
@@ -76,7 +78,8 @@ class CartridgeOverridesProvider {
    * @returns object
    */
   generateControllerTree(data) {
-    const key = `${data.cartridge}_${data.name.replace(/[\/.]/g, '-')}`
+    const key = `${data.cartridge}_${data.name.replace(REGEXP_PATH, '-')}`
+
     if (this.lastOpened === key) {
       return
     }
@@ -109,6 +112,7 @@ class CartridgeOverridesProvider {
             const foundPrepends = [...text.matchAll(/server\.prepend\(([^'"]+)?['"]([^'"]+)['"]/g)]
             const foundReplaces = [...text.matchAll(/server\.replace\(([^'"]+)?['"]([^'"]+)['"]/g)]
 
+            // Process GET Routes
             foundGets.forEach((found) => {
               if (found.length > 2) {
                 const routeName = found[2]
@@ -146,6 +150,7 @@ class CartridgeOverridesProvider {
               }
             })
 
+            // Process POST Routes
             foundPosts.forEach((found) => {
               if (found.length > 2) {
                 const routeName = found[2]
@@ -183,6 +188,7 @@ class CartridgeOverridesProvider {
               }
             })
 
+            // Process USE Routes
             foundUses.forEach((found) => {
               if (found.length > 2) {
                 const routeName = found[2]
@@ -220,6 +226,7 @@ class CartridgeOverridesProvider {
               }
             })
 
+            // Process APPEND Routes
             foundAppends.forEach((found) => {
               if (found.length > 2) {
                 const routeName = found[2]
@@ -257,6 +264,7 @@ class CartridgeOverridesProvider {
               }
             })
 
+            // Process PREPEND Routes
             foundPrepends.forEach((found) => {
               if (found.length > 2) {
                 const routeName = found[2]
@@ -294,6 +302,7 @@ class CartridgeOverridesProvider {
               }
             })
 
+            // Process REPLACE Routes
             foundReplaces.forEach((found) => {
               if (found.length > 2) {
                 const routeName = found[2]
@@ -417,7 +426,8 @@ class CartridgeOverridesProvider {
    * @returns object
    */
   generatePropertiesTree(data) {
-    const key = `${data.cartridge}_${data.name.replace(/[\/.]/g, '-')}`
+    const key = `${data.cartridge}_${data.name.replace(REGEXP_PATH, '-')}`
+
     if (this.lastOpened === key) {
       return
     }

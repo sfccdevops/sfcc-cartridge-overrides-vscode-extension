@@ -1,10 +1,12 @@
 'use strict'
 
+const path = require('path')
 const vscode = require('vscode')
 const { init, localize } = require('vscode-nls-i18n')
 
 const Cache = require('./Cache')
 const util = require('./util')
+const { REGEXP_CARTRIDGE, REGEXP_PATH } = require('./constants')
 
 /**
  * SFCC Cartridges
@@ -18,8 +20,8 @@ class Cartridges {
     init(context.extensionPath)
 
     // Create Cache Instances
-    this.cacheFiles = new Cache(context, 'files')
-    this.cacheOverrides = new Cache(context, 'overrides')
+    this.cacheFiles = new Cache(context, 'sfcc-files')
+    this.cacheOverrides = new Cache(context, 'sfcc-overrides')
 
     // Establish VS Code Context
     this.context = context
@@ -36,6 +38,7 @@ class Cartridges {
     // Do initial load of data using cache
     this.refresh(true)
 
+    // Get Cartridges and Start Loading Data
     this.getCartridgesFromConfig().then((updateCartridgePath) => {
       if (updateCartridgePath) {
         // Refetch Cartridge since the settings changed
@@ -145,6 +148,10 @@ class Cartridges {
     return cartridgesArray.filter((cartridge) => ignoredCartridges.indexOf(cartridge) === -1)
   }
 
+  /**
+   * Get Cartridge Names from Config File
+   * @returns Promise
+   */
   getCartridgesFromConfig() {
     return new Promise((resolve) => {
       // Get current cartridge path from settings
@@ -168,7 +175,7 @@ class Cartridges {
                 // Check which message to show
                 const message = cartridgePath && cartridgePath.length > 0 ? localize('config.properties.path.changed') : localize('config.properties.path.found')
 
-                // Looks like the local dw.json is differnt than VS Code Settings, check if we should save the dw.json into VS Code
+                // Looks like the local dw.json is different than VS Code Settings, check if we should save the dw.json into VS Code
                 vscode.window.showInformationMessage(message, localize('ui.dialog.yes'), localize('ui.dialog.no')).then((answer) => {
                   if (answer === localize('ui.dialog.yes')) {
                     // Update VS Code Settings and reload
@@ -202,8 +209,8 @@ class Cartridges {
   }
 
   /**
-   *
-   * @returns
+   * Get Cartridge Files
+   * @returns Promise
    */
   getCartridges() {
     // Fetch Config for Override Visibility
@@ -230,7 +237,7 @@ class Cartridges {
      */
     const getOverrides = (cartridge, relativeKey, skipCacheWrite) => {
       // Generate Cache Key for Override Lookup
-      const cacheKey = `${cartridge}${relativeKey ? relativeKey.replace(/[\/.]/g, '-') : ''}`
+      const cacheKey = `${cartridge}${relativeKey ? relativeKey.replace(REGEXP_PATH, '-') : ''}`
 
       // Return Cache if Present ( calculating overrides is a time consuming process )
       if (this.cacheOverrides.has(cacheKey)) {
@@ -287,6 +294,12 @@ class Cartridges {
       return overrides
     }
 
+    /**
+     * Process Cartridge Files
+     * @param {Array} files Cartridge Files
+     * @param {Boolean} skipCacheWrite Whether to Skip Writing to Cache
+     * @returns Object
+     */
     const processFiles = (files, skipCacheWrite) => {
       let filesClone
 
@@ -308,11 +321,10 @@ class Cartridges {
       // Loop through files and look for overrides
       filesClone.forEach((file) => {
         // Pattern to grab some cartridge data about this file
-        const regexPattern = /^(.+)\/cartridges\/([^/]+)\/cartridge\/(.+)$/
-        const fileParts = file.match(regexPattern)
+        const fileParts = file.match(REGEXP_CARTRIDGE)
 
         // Make sure this is a cartridge file
-        if (fileParts.length === 4) {
+        if (fileParts && fileParts.length === 4) {
           // Map file parts to more helpful names
           const cartridgeName = fileParts[2]
           const relativeFilePath = fileParts[3]
@@ -349,10 +361,10 @@ class Cartridges {
       // Loop through Cartridge Path in the order they were listed
       this.cartridgesPath.forEach((cartridge) => {
         // Filter Detected files to just the files in the current cartridge
-        const cartridgeFiles = filesClone.filter((file) => file.indexOf(`cartridges/${cartridge}/cartridge`) > -1)
+        const cartridgeFiles = filesClone.filter((file) => file.indexOf(`cartridges${path.sep}${cartridge}${path.sep}cartridge`) > -1)
 
         // Check if Cartridge is missing
-        if (cartridgeFiles.length === 0 && !Object.prototype.hasOwnProperty.call(cartridges, cartridge) && !overridesOnly) {
+        if (cartridgeFiles && cartridgeFiles.length === 0 && !Object.prototype.hasOwnProperty.call(cartridges, cartridge) && !overridesOnly) {
           cartridges[cartridge] = {
             missing: true,
             overrides: null,
@@ -369,16 +381,15 @@ class Cartridges {
         // Loop through Cartridge Files
         cartridgeFiles.forEach((file) => {
           // Create RegEx pattern to find information from file path
-          const regex = /^(.+)\/cartridges\/([^/]+)\/cartridge\/(.+)$/
-          const parts = file.match(regex)
+          const parts = file.match(REGEXP_CARTRIDGE)
 
           // Sanity check that we have all the info we need
-          if (parts.length === 4) {
+          if (parts && parts.length === 4) {
             // Break out file parts into variables
             const base = parts[1]
             const cartridge = parts[2]
             const relativePath = parts[3]
-            const splitRelativePath = relativePath.split('/')
+            const splitRelativePath = relativePath.split(path.sep)
 
             // Create Cartridge Tree View Root
             if (!Object.prototype.hasOwnProperty.call(cartridges, cartridge)) {
@@ -394,7 +405,7 @@ class Cartridges {
 
             // Create Tree Structure from Relative File Path
             splitRelativePath.reduce((obj, name, index) => {
-              const relativeKey = `${base}/cartridges/${cartridge}/cartridge/${splitRelativePath.slice(0, index + 1).join('/')}`
+              const relativeKey = `${base}${path.sep}cartridges${path.sep}${cartridge}${path.sep}cartridge${path.sep}${splitRelativePath.slice(0, index + 1).join(path.sep)}`
 
               // Create Tree Item if Not Present
               if (!obj[name]) {
@@ -431,7 +442,7 @@ class Cartridges {
                   // We need some additional data for handing off to Overrides Panel
                   treeItem.data = {
                     cartridge: cartridge,
-                    name: relativePath.substring(relativePath.lastIndexOf('/') + 1),
+                    name: relativePath.substring(relativePath.lastIndexOf(path.sep) + 1),
                     overrides: cartridgeFileData[relativePath],
                     resourceUri: vscode.Uri.file(`${this.workspacePath}${relativeKey}`),
                     type: util.getType(file),
@@ -516,6 +527,7 @@ class Cartridges {
 
   /**
    * Refresh Cartridge Tree
+   * @param {Boolean} useCache Whether to Refresh Tree Using Cache
    */
   refresh(useCache) {
     // Show Loading Indicator Until Loaded
@@ -532,16 +544,18 @@ class Cartridges {
           }
 
           // Fetch Files from Workspace
-          this.getCartridges().then((cartridges) => {
-            // Update Tree View Data
-            this.treeCartridges = this.generateTree(cartridges)
+          this.getCartridges()
+            .then((cartridges) => {
+              // Update Tree View Data
+              this.treeCartridges = this.generateTree(cartridges)
 
-            // Let VS Code know we have updated data
-            vscode.commands.executeCommand('extension.sfccCartridges.cartridgeListUpdated', this.treeCartridges)
+              // Let VS Code know we have updated data
+              vscode.commands.executeCommand('extension.sfccCartridges.cartridgeListUpdated', this.treeCartridges)
 
-            // Stop Loading Indicator
-            resolve()
-          })
+              // Stop Loading Indicator
+              resolve()
+            })
+            .catch((err) => console.error(err))
         })
     )
   }

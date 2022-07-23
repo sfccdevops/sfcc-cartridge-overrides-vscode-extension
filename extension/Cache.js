@@ -1,5 +1,7 @@
 'use strict'
 
+var pjson = require('../package.json')
+
 /**
  * @class Cache
  * @desc A module for use in developing a Visual Studio Code extension. It allows an extension to cache values across sessions with optional expiration times using the ExtensionContext.globalState.
@@ -17,6 +19,9 @@ const Cache = function (context, namespace) {
 
   // Namespace of the context's globalState
   this.namespace = namespace || 'cache'
+
+  // Append Package Version to Cache Namespace
+  this.namespace = this.namespace.concat(`-${pjson.version}`)
 
   // Local cache object
   this.cache = this.context.globalState.get(this.namespace, {})
@@ -78,7 +83,7 @@ Cache.prototype.get = function (key, defaultValue) {
       return undefined
     }
     // Otherwise return the value
-    return this.cache[key].value
+    return this.cache[key] ? this.cache[key].value : null
   }
 }
 
@@ -138,7 +143,7 @@ Cache.prototype.keys = function () {
 Cache.prototype.all = function () {
   let items = {}
   for (let key in this.cache) {
-    items[key] = this.cache[key].value
+    items[key] = this.cache[key] ? this.cache[key].value : null
   }
   return items
 }
