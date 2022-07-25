@@ -39,15 +39,19 @@ class Cartridges {
     this.refresh(true)
 
     // Get Cartridges and Start Loading Data
-    this.getCartridgesFromConfig().then((updateCartridgePath) => {
-      if (updateCartridgePath) {
-        // Refetch Cartridge since the settings changed
-        this.cartridgesPath = this.getCartridgesPath()
+    this.getCartridgesFromConfig()
+      .then((updateCartridgePath) => {
+        if (updateCartridgePath) {
+          // Refetch Cartridge since the settings changed
+          this.cartridgesPath = this.getCartridgesPath()
 
-        // Do initial load of data using cache
-        this.refresh(true)
-      }
-    })
+          // Do initial load of data using cache
+          this.refresh(true)
+        }
+      })
+      .catch((err) => {
+        util.logger(localize('debug.logger.error', 'Cartridges.constructor', err.toString()), 'error')
+      })
   }
 
   /**
@@ -158,53 +162,73 @@ class Cartridges {
       const cartridgePath = vscode.workspace.getConfiguration().get('extension.sfccCartridges.path')
 
       // Find dw.json file in root
-      vscode.workspace.findFiles(new vscode.RelativePattern(this.workspacePath, 'dw.{json,js}')).then((dwConfig) => {
-        // Make sure we found a file
-        if (dwConfig && typeof dwConfig[0] !== 'undefined' && typeof dwConfig[0].path !== 'undefined') {
-          // Read file and get its content
-          vscode.workspace.openTextDocument(dwConfig[0].path).then((config) => {
-            // Get Text
-            const configText = config.getText()
+      vscode.workspace
+        .findFiles(new vscode.RelativePattern(this.workspacePath, 'dw.{json,js}'))
+        .then((dwConfig) => {
+          // Make sure we found a file
+          if (dwConfig && typeof dwConfig[0] !== 'undefined' && typeof dwConfig[0].path !== 'undefined') {
+            // Read file and get its content
+            vscode.workspace
+              .openTextDocument(dwConfig[0].path)
+              .then((config) => {
+                // Get Text
+                const configText = config.getText()
 
-            // Try to parse the JSON
-            try {
-              const configJson = JSON.parse(configText)
+                // Try to parse the JSON
+                try {
+                  const configJson = JSON.parse(configText)
 
-              // Check if cartridgesPath was defined in the dw.json and if it is different than the one in VS Code Settings
-              if (configJson.cartridgesPath && cartridgePath !== configJson.cartridgesPath && configJson.cartridgesPath !== '') {
-                // Check which message to show
-                const message = cartridgePath && cartridgePath.length > 0 ? localize('config.properties.path.changed') : localize('config.properties.path.found')
+                  // Check if cartridgesPath was defined in the dw.json and if it is different than the one in VS Code Settings
+                  if (configJson.cartridgesPath && cartridgePath !== configJson.cartridgesPath && configJson.cartridgesPath !== '') {
+                    // Check which message to show
+                    const message = cartridgePath && cartridgePath.length > 0 ? localize('config.properties.path.changed') : localize('config.properties.path.found')
 
-                // Looks like the local dw.json is different than VS Code Settings, check if we should save the dw.json into VS Code
-                vscode.window.showInformationMessage(message, localize('ui.dialog.yes'), localize('ui.dialog.no')).then((answer) => {
-                  if (answer === localize('ui.dialog.yes')) {
-                    // Update VS Code Settings and reload
-                    vscode.workspace
-                      .getConfiguration()
-                      .update('extension.sfccCartridges.path', configJson.cartridgesPath, vscode.ConfigurationTarget.Global)
-                      .then(() => {
-                        // Let the developer know their settings have been saved
-                        vscode.window.showInformationMessage(localize('config.properties.path.updated'))
-                        return resolve(true)
+                    // Looks like the local dw.json is different than VS Code Settings, check if we should save the dw.json into VS Code
+                    vscode.window
+                      .showInformationMessage(message, localize('ui.dialog.yes'), localize('ui.dialog.no'))
+                      .then((answer) => {
+                        if (answer === localize('ui.dialog.yes')) {
+                          // Update VS Code Settings and reload
+                          vscode.workspace
+                            .getConfiguration()
+                            .update('extension.sfccCartridges.path', configJson.cartridgesPath, vscode.ConfigurationTarget.Global)
+                            .then(() => {
+                              // Let the developer know their settings have been saved
+                              vscode.window.showInformationMessage(localize('config.properties.path.updated'))
+                              return resolve(true)
+                            })
+                            .catch((err) => {
+                              util.logger(localize('debug.logger.error', 'Cartridges.getCartridgesFromConfig:getConfiguration', err.toString()), 'error')
+                              return resolve(false)
+                            })
+                        } else {
+                          return resolve(false)
+                        }
+                      })
+                      .catch((err) => {
+                        util.logger(localize('debug.logger.error', 'Cartridges.getCartridgesFromConfig:showInformationMessage', err.toString()), 'error')
+                        return resolve(false)
                       })
                   } else {
+                    // Config was present, but no cartridge path found
                     return resolve(false)
                   }
-                })
-              } else {
-                // Config was present, but no cartridge path found
-                return resolve(false)
-              }
-            } catch (err) {
-              console.error(err)
-              return resolve(false)
-            }
-          })
-        } else {
-          // No file to load
-          return resolve(false)
-        }
-      })
+                } catch (err) {
+                  util.logger(localize('debug.logger.error', 'Cartridges.getCartridgesFromConfig:JSON.parse', err.toString()), 'error')
+                  return resolve(false)
+                }
+              })
+              .catch((err) => {
+                util.logger(localize('debug.logger.error', 'Cartridges.getCartridgesFromConfig:openTextDocument', err.toString()), 'error')
+              })
+          } else {
+            // No file to load
+            return resolve(false)
+          }
+        })
+        .catch((err) => {
+          util.logger(localize('debug.logger.error', 'Cartridges.findFiles', err.toString()), 'error')
+        })
     })
   }
 
@@ -468,8 +492,8 @@ class Cartridges {
                 }
 
                 // Create Tree Meta Data
-                let descriptionText = description.length > 0 ? description.join(' ') : null
-                let tooltipText = tooltip.length > 0 ? tooltip.join(' ') : null
+                let descriptionText = description && description.length > 0 ? description.join(' ') : null
+                let tooltipText = tooltip && tooltip.length > 0 ? tooltip.join(' ') : null
 
                 // Update Tree Item Labels
                 treeItem.description = descriptionText
@@ -521,7 +545,12 @@ class Cartridges {
       return Promise.resolve(processFiles(this.cacheFiles.get('workspaceFiles'), true))
     } else {
       // Use Native VS Code methods to locate Cartridges
-      return vscode.workspace.findFiles(includePattern, excludePattern).then((files) => processFiles(files))
+      return vscode.workspace
+        .findFiles(includePattern, excludePattern)
+        .then((files) => processFiles(files))
+        .catch((err) => {
+          util.logger(localize('debug.logger.error', 'Cartridges.getCartridges:processFiles', err.toString()), 'error')
+        })
     }
   }
 
@@ -536,7 +565,7 @@ class Cartridges {
         location: { viewId: 'sfccCartridgesView' },
       },
       () =>
-        new Promise((resolve) => {
+        new Promise((resolve, reject) => {
           if (!useCache) {
             // Clear Cache
             this.cacheFiles.flush()
@@ -555,7 +584,10 @@ class Cartridges {
               // Stop Loading Indicator
               resolve()
             })
-            .catch((err) => console.error(err))
+            .catch((err) => {
+              util.logger(localize('debug.logger.error', 'Cartridges.refresh:getCartridges', err.toString()), 'error')
+              reject(err)
+            })
         })
     )
   }

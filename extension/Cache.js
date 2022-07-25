@@ -1,6 +1,11 @@
 'use strict'
 
-var pjson = require('../package.json')
+const md5 = require('md5')
+
+const pjson = require('../package.json')
+const util = require('./util')
+
+const { SEP } = require('./constants')
 
 /**
  * @class Cache
@@ -18,10 +23,7 @@ const Cache = function (context, namespace) {
   this.context = context
 
   // Namespace of the context's globalState
-  this.namespace = namespace || 'cache'
-
-  // Append Package Version to Cache Namespace
-  this.namespace = this.namespace.concat(`-${pjson.version}`)
+  this.namespace = md5(`${util.getWorkspace(context)}${SEP}${namespace}${SEP}${pjson.version}`)
 
   // Local cache object
   this.cache = this.context.globalState.get(this.namespace, {})

@@ -103,10 +103,10 @@ class CartridgesProvider {
 
     // Add Custom Tree Item Data
     treeItem.command = item.command || null
-    treeItem.description = item.description || null
+    treeItem.description = item.description || ''
     treeItem.iconPath = item.iconPath || null
     treeItem.resourceUri = item.resourceUri || null
-    treeItem.tooltip = item.tooltip || null
+    treeItem.tooltip = item.tooltip || ''
 
     return treeItem
   }
@@ -117,7 +117,7 @@ class CartridgesProvider {
    */
   refresh(treeData) {
     this.treeData = treeData
-    this._onDidChangeTreeData.fire(undefined)
+    this._onDidChangeTreeData.fire()
   }
 }
 

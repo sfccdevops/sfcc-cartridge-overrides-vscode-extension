@@ -346,64 +346,68 @@ class CartridgeOverridesProvider {
     }
 
     // Check all the property files line by line
-    checkControllers().then((overrideRoutes) => {
-      // Start creation of File Tree
-      data.overrides.forEach((override, index) => {
-        const isSelected = data.cartridge === override.cartridge ? 1 : 0
-        const children = []
-        const routeName = data.name.replace('.js', '')
+    checkControllers()
+      .then((overrideRoutes) => {
+        // Start creation of File Tree
+        data.overrides.forEach((override, index) => {
+          const isSelected = data.cartridge === override.cartridge ? 1 : 0
+          const children = []
+          const routeName = data.name.replace('.js', '')
 
-        // Create Parent Tree Element
-        const treeItem = {
-          name: routeName,
-          tooltip: localize('ui.toggle.title'),
-          description: override.cartridge,
-          isSelected: isSelected,
-          sortOrder: index,
-          iconPath: index === data.overrides.length - 1 ? util.getIcon('controllers', isSelected) : util.getIcon('override', isSelected),
-        }
-
-        // Add any properties that were found to be overwritten as children
-        Object.keys(overrideRoutes).forEach((prop) => {
-          if (Object.prototype.hasOwnProperty.call(overrideRoutes[prop], override.cartridge)) {
-            const propObj = overrideRoutes[prop][override.cartridge][0]
-            const range = propObj.lineNumber ? new vscode.Range(new vscode.Position(propObj.lineNumber - 1, 0), new vscode.Position(propObj.lineNumber - 1, 0)) : null
-            const args = propObj.lineNumber ? [propObj.resourceUri, { selection: new vscode.Selection(range.start, range.end) }] : [propObj.resourceUri]
-
-            children.push({
-              command: {
-                command: 'vscode.open',
-                arguments: args,
-              },
-              name: propObj.name,
-              contextValue: 'file',
-              description: propObj.type,
-              tooltip: propObj.tooltip,
-              iconPath: util.getIcon('route'),
-            })
+          // Create Parent Tree Element
+          const treeItem = {
+            name: routeName,
+            tooltip: localize('ui.toggle.title'),
+            description: override.cartridge,
+            isSelected: isSelected,
+            sortOrder: index,
+            iconPath: index === data.overrides.length - 1 ? util.getIcon('controllers', isSelected) : util.getIcon('override', isSelected),
           }
+
+          // Add any properties that were found to be overwritten as children
+          Object.keys(overrideRoutes).forEach((prop) => {
+            if (Object.prototype.hasOwnProperty.call(overrideRoutes[prop], override.cartridge)) {
+              const propObj = overrideRoutes[prop][override.cartridge][0]
+              const range = propObj.lineNumber ? new vscode.Range(new vscode.Position(propObj.lineNumber - 1, 0), new vscode.Position(propObj.lineNumber - 1, 0)) : null
+              const args = propObj.lineNumber ? [propObj.resourceUri, { selection: new vscode.Selection(range.start, range.end) }] : [propObj.resourceUri]
+
+              children.push({
+                command: {
+                  command: 'vscode.open',
+                  arguments: args,
+                },
+                name: propObj.name,
+                contextValue: 'file',
+                description: propObj.type,
+                tooltip: propObj.tooltip,
+                iconPath: util.getIcon('route'),
+              })
+            }
+          })
+
+          // Make the Parent Tree item collapsable if it contains children
+          if (children.length > 0) {
+            treeItem.children = children
+            treeItem.contextValue = 'folder'
+          } else {
+            treeItem.contextValue = 'file'
+            treeItem.command = {
+              command: 'vscode.open',
+              arguments: [override.resourceUri],
+              title: localize('ui.openFile.title', treeItem.name),
+            }
+          }
+
+          // Push Tree Item to List
+          controllerTree.push(treeItem)
         })
 
-        // Make the Parent Tree item collapsable if it contains children
-        if (children.length > 0) {
-          treeItem.children = children
-          treeItem.contextValue = 'folder'
-        } else {
-          treeItem.contextValue = 'file'
-          treeItem.command = {
-            command: 'vscode.open',
-            arguments: [override.resourceUri],
-            title: localize('ui.openFile.title', treeItem.name),
-          }
-        }
-
-        // Push Tree Item to List
-        controllerTree.push(treeItem)
+        this.treeData = controllerTree
+        this._onDidChangeTreeData.fire(undefined)
       })
-
-      this.treeData = controllerTree
-      this._onDidChangeTreeData.fire(undefined)
-    })
+      .catch((err) => {
+        util.logger(localize('debug.logger.error', 'CartridgeOverridesProvider.generateControllerTree', err.toString()), 'error')
+      })
 
     this.lastOpened = key
 
@@ -479,71 +483,75 @@ class CartridgeOverridesProvider {
     }
 
     // Check all the property files line by line
-    checkProperties().then((overrideProperties) => {
-      // Check each property for overrides
-      Object.keys(overrideProperties).forEach((prop) => {
-        // If there are no overrides, let's do some cleanup
-        if (Object.keys(overrideProperties[prop]).length < 2) {
-          delete overrideProperties[prop]
-        }
-      })
-
-      // Start creation of File Tree
-      data.overrides.forEach((override, index) => {
-        const isSelected = data.cartridge === override.cartridge ? 1 : 0
-        const children = []
-
-        // Create Parent Tree Element
-        const treeItem = {
-          name: data.name,
-          description: override.cartridge,
-          isSelected: isSelected,
-          sortOrder: index,
-          iconPath: index === data.overrides.length - 1 ? util.getIcon('templates', isSelected) : util.getIcon('override', isSelected),
-        }
-
-        // Add any properties that were found to be overwritten as children
+    checkProperties()
+      .then((overrideProperties) => {
+        // Check each property for overrides
         Object.keys(overrideProperties).forEach((prop) => {
-          if (Object.prototype.hasOwnProperty.call(overrideProperties[prop], override.cartridge)) {
-            const propObj = overrideProperties[prop][override.cartridge][0]
-            const range = new vscode.Range(new vscode.Position(propObj.lineNumber - 1, 0), new vscode.Position(propObj.lineNumber - 1, 0))
-
-            children.push({
-              command: {
-                command: 'vscode.open',
-                arguments: [
-                  propObj.resourceUri,
-                  {
-                    selection: new vscode.Selection(range.start, range.end),
-                  },
-                ],
-              },
-              name: propObj.name,
-              contextValue: 'file',
-              iconPath: util.getIcon('property'),
-            })
+          // If there are no overrides, let's do some cleanup
+          if (Object.keys(overrideProperties[prop]).length < 2) {
+            delete overrideProperties[prop]
           }
         })
 
-        // Make the Parent Tree item collapsable if it contains children
-        if (children.length > 0) {
-          treeItem.children = children
-          treeItem.contextValue = 'folder'
-        } else {
-          treeItem.contextValue = 'file'
-          treeItem.command = {
-            command: 'vscode.open',
-            arguments: [override.resourceUri],
+        // Start creation of File Tree
+        data.overrides.forEach((override, index) => {
+          const isSelected = data.cartridge === override.cartridge ? 1 : 0
+          const children = []
+
+          // Create Parent Tree Element
+          const treeItem = {
+            name: data.name,
+            description: override.cartridge,
+            isSelected: isSelected,
+            sortOrder: index,
+            iconPath: index === data.overrides.length - 1 ? util.getIcon('templates', isSelected) : util.getIcon('override', isSelected),
           }
-        }
 
-        // Push Tree Item to List
-        templateTree.push(treeItem)
+          // Add any properties that were found to be overwritten as children
+          Object.keys(overrideProperties).forEach((prop) => {
+            if (Object.prototype.hasOwnProperty.call(overrideProperties[prop], override.cartridge)) {
+              const propObj = overrideProperties[prop][override.cartridge][0]
+              const range = new vscode.Range(new vscode.Position(propObj.lineNumber - 1, 0), new vscode.Position(propObj.lineNumber - 1, 0))
+
+              children.push({
+                command: {
+                  command: 'vscode.open',
+                  arguments: [
+                    propObj.resourceUri,
+                    {
+                      selection: new vscode.Selection(range.start, range.end),
+                    },
+                  ],
+                },
+                name: propObj.name,
+                contextValue: 'file',
+                iconPath: util.getIcon('property'),
+              })
+            }
+          })
+
+          // Make the Parent Tree item collapsable if it contains children
+          if (children.length > 0) {
+            treeItem.children = children
+            treeItem.contextValue = 'folder'
+          } else {
+            treeItem.contextValue = 'file'
+            treeItem.command = {
+              command: 'vscode.open',
+              arguments: [override.resourceUri],
+            }
+          }
+
+          // Push Tree Item to List
+          templateTree.push(treeItem)
+        })
+
+        this.treeData = templateTree
+        this._onDidChangeTreeData.fire(undefined)
       })
-
-      this.treeData = templateTree
-      this._onDidChangeTreeData.fire(undefined)
-    })
+      .catch((err) => {
+        util.logger(localize('debug.logger.error', 'CartridgeOverridesProvider.generatePropertiesTree', err.toString()), 'error')
+      })
 
     this.lastOpened = key
 
@@ -619,10 +627,10 @@ class CartridgeOverridesProvider {
 
     // Add Custom Tree Item Data
     treeItem.command = item.command || null
-    treeItem.description = item.description || null
+    treeItem.description = item.description || ''
     treeItem.iconPath = item.iconPath || null
     treeItem.resourceUri = item.resourceUri || null
-    treeItem.tooltip = item.tooltip || null
+    treeItem.tooltip = item.tooltip || ''
 
     return treeItem
   }
@@ -657,7 +665,7 @@ class CartridgeOverridesProvider {
    */
   reset() {
     this.treeData = []
-    this._onDidChangeTreeData.fire(undefined)
+    this._onDidChangeTreeData.fire()
   }
 }
 
