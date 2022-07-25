@@ -38,3 +38,5 @@ Need Help?
 > You can check for existing issues, or create a new one, by visiting our GitHub Issues page.
 
 [![Create Issue](https://img.shields.io/badge/Github-Issues-red.svg?style=for-the-badge&logo=github&logoColor=ffffff&logoWidth=16)](https://github.com/sfccdevops/sfcc-cartridge-overrides-vscode-extension/issues)
+
+**NOTE:** If you would like to report an issue, please copy the output from our `SFCC Cartridge Overrides` output panel.  This will contain everything we need to know about what happened with this extension on your machine. You can access the output panel by accessing `View > Output` and then selecting the `SFCC Cartridge Overrides` from the select list of available output options.

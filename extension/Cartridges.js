@@ -570,6 +570,9 @@ class Cartridges {
             // Clear Cache
             this.cacheFiles.flush()
             this.cacheOverrides.flush()
+
+            // Update Cartridges Path
+            this.cartridgesPath = this.getCartridgesPath()
           }
 
           // Fetch Files from Workspace

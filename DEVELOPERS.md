@@ -4,6 +4,18 @@ Developer Setup
 Extension Development
 ---
 
+### Downloading Extension
+
+> To get started developing this extension, you will first need to download the source code:
+
+```bash
+git clone git@github.com:sfccdevops/sfcc-cartridge-overrides-vscode-extension.git
+cd sfcc-cartridge-overrides-vscode-extension
+npm install
+```
+
+### Testing Extension
+
 > To develop this extension in VS Code:
 
 1. Open File `extension.code-workspace` in VS Code
