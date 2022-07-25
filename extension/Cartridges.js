@@ -6,7 +6,7 @@ const { init, localize } = require('vscode-nls-i18n')
 
 const Cache = require('./Cache')
 const util = require('./util')
-const { REGEXP_CARTRIDGE, REGEXP_PATH } = require('./constants')
+const { REGEXP_CARTRIDGE, REGEXP_PATH, SEP } = require('./constants')
 
 /**
  * SFCC Cartridges
@@ -385,7 +385,7 @@ class Cartridges {
       // Loop through Cartridge Path in the order they were listed
       this.cartridgesPath.forEach((cartridge) => {
         // Filter Detected files to just the files in the current cartridge
-        const cartridgeFiles = filesClone.filter((file) => file.indexOf(`cartridges${path.sep}${cartridge}${path.sep}cartridge`) > -1)
+        const cartridgeFiles = filesClone.filter((file) => file.indexOf(`cartridges${SEP}${cartridge}${SEP}cartridge`) > -1)
 
         // Check if Cartridge is missing
         if (cartridgeFiles && cartridgeFiles.length === 0 && !Object.prototype.hasOwnProperty.call(cartridges, cartridge) && !overridesOnly) {
@@ -429,7 +429,7 @@ class Cartridges {
 
             // Create Tree Structure from Relative File Path
             splitRelativePath.reduce((obj, name, index) => {
-              const relativeKey = `${base}${path.sep}cartridges${path.sep}${cartridge}${path.sep}cartridge${path.sep}${splitRelativePath.slice(0, index + 1).join(path.sep)}`
+              const relativeKey = `${base}${SEP}cartridges${SEP}${cartridge}${SEP}cartridge${SEP}${splitRelativePath.slice(0, index + 1).join(path.sep)}`
 
               // Create Tree Item if Not Present
               if (!obj[name]) {

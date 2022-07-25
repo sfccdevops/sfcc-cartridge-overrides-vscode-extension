@@ -65,7 +65,7 @@ class CartridgeOverridesProvider {
     })
 
     this.treeData = templateTree
-    this._onDidChangeTreeData.fire(undefined)
+    this._onDidChangeTreeData.fire()
 
     this.lastOpened = key
 
@@ -403,7 +403,7 @@ class CartridgeOverridesProvider {
         })
 
         this.treeData = controllerTree
-        this._onDidChangeTreeData.fire(undefined)
+        this._onDidChangeTreeData.fire()
       })
       .catch((err) => {
         util.logger(localize('debug.logger.error', 'CartridgeOverridesProvider.generateControllerTree', err.toString()), 'error')
@@ -547,7 +547,7 @@ class CartridgeOverridesProvider {
         })
 
         this.treeData = templateTree
-        this._onDidChangeTreeData.fire(undefined)
+        this._onDidChangeTreeData.fire()
       })
       .catch((err) => {
         util.logger(localize('debug.logger.error', 'CartridgeOverridesProvider.generatePropertiesTree', err.toString()), 'error')

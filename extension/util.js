@@ -5,6 +5,8 @@ const vscode = require('vscode')
 
 const { init, localize } = require('vscode-nls-i18n')
 
+const { SEP } = require('./constants')
+
 // Create custom Output Channel to Log Helpful Messages
 const output = vscode.window.createOutputChannel('SFCC Cartridge Overrides')
 
@@ -56,13 +58,13 @@ const getIcon = (type, overrideCount) => {
  * @returns {String} SFCC File Type
  */
 const getType = (file) => {
-  if (file.includes(`${path.sep}controllers${path.sep}`)) {
+  if (file.includes(`${SEP}controllers${SEP}`)) {
     return 'controller'
-  } else if (file.includes(`${path.sep}models${path.sep}`)) {
+  } else if (file.includes(`${SEP}models${SEP}`)) {
     return 'model'
-  } else if (file.includes(`${path.sep}scripts${path.sep}`)) {
+  } else if (file.includes(`${SEP}scripts${SEP}`)) {
     return 'script'
-  } else if (file.includes(`${path.sep}templates${path.sep}`)) {
+  } else if (file.includes(`${SEP}templates${SEP}`)) {
     return 'template'
   } else {
     return 'unknown'
