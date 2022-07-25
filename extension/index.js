@@ -143,7 +143,7 @@ function activate(context) {
   const cartridgeMissing = vscode.commands.registerCommand('extension.sfccCartridges.cartridgeMissing', (cartridge) => vscode.window.showErrorMessage(localize('command.cartridgeMissing.error', cartridge)))
   const disableFilter = vscode.commands.registerCommand('extension.sfccCartridges.disableFilter', () => vscode.workspace.getConfiguration().update('extension.sfccCartridges.overridesOnly', false, vscode.ConfigurationTarget.Global))
   const enableFilter = vscode.commands.registerCommand('extension.sfccCartridges.enableFilter', () => vscode.workspace.getConfiguration().update('extension.sfccCartridges.overridesOnly', true, vscode.ConfigurationTarget.Global))
-  const openSettings = vscode.commands.registerCommand('extension.sfccCartridges.openSettings', () => vscode.commands.executeCommand('workbench.action.openSettings', 'extension.sfccCartridges'))
+  const openSettings = vscode.commands.registerCommand('extension.sfccCartridges.openSettings', () => vscode.commands.executeCommand('workbench.action.openWorkspaceSettings', 'extension.sfccCartridges'))
   const refreshCartridges = vscode.commands.registerCommand('extension.sfccCartridges.refreshCartridges', () => cartridges.refresh(false))
   const viewOverrides = vscode.commands.registerCommand('extension.sfccCartridges.viewOverrides', (overrides) => cartridgeOverridesProvider.load(overrides))
 
