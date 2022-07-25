@@ -7,6 +7,7 @@ const CartridgeOverridesProvider = require('./CartridgeOverridesProvider')
 const Cartridges = require('./Cartridges')
 const CartridgesProvider = require('./CartridgesProvider')
 const util = require('./util')
+const { SEP } = require('./constants')
 
 const WelcomePane = require('./welcome')
 
@@ -91,7 +92,9 @@ function activate(context) {
                 revealCartridgeFile(index + 1)
               }
             })
-            .catch((err) => util.logger(err, 'error'))
+            .catch((err) => {
+              util.logger(localize('debug.logger.error', 'revealCartridgeFile', err.toString()), 'error')
+            })
         }
       }
 
@@ -110,20 +113,27 @@ function activate(context) {
         revealCartridgeFile(0)
 
         // Go ahead an update the Overrides Panel with Selected File
-        cartridgeOverridesProvider.load(found).then(() => {
-          // Once we have populated the Override Panel, let's select the active override
-          const selectedOverride = cartridgeOverridesProvider.getElement(found.cartridge)
+        cartridgeOverridesProvider
+          .load(found)
+          .then(() => {
+            // Once we have populated the Override Panel, let's select the active override
+            const selectedOverride = cartridgeOverridesProvider.getElement(found.cartridge)
 
-          clearTimeout(revealTimeout)
-          revealTimeout = setTimeout(() => {
-            if (sfccCartridgeOverridesView) {
-              sfccCartridgeOverridesView.reveal(selectedOverride, { focus: true, select: true, expand: true }).catch((err) => util.logger(err, 'error'))
-            }
-          }, 500)
-        })
+            clearTimeout(revealTimeout)
+            revealTimeout = setTimeout(() => {
+              if (sfccCartridgeOverridesView) {
+                sfccCartridgeOverridesView.reveal(selectedOverride, { focus: true, select: true, expand: true }).catch((err) => {
+                  util.logger(localize('debug.logger.error', 'activate.selectTreeViewFile:reveal', err.toString()), 'error')
+                })
+              }
+            }, 500)
+          })
+          .catch((err) => {
+            util.logger(localize('debug.logger.error', 'activate.selectTreeViewFile:cartridgeOverridesProvider', err.toString()), 'error')
+          })
       } else {
         // Show Information Message
-        vscode.window.showInformationMessage(localize('command.checkOverrides.noneFound', currentSelectedFileName.substring(currentSelectedFileName.lastIndexOf('/') + 1)))
+        vscode.window.showInformationMessage(localize('command.checkOverrides.noneFound', currentSelectedFileName.substring(currentSelectedFileName.lastIndexOf(SEP) + 1)))
       }
     }
   }

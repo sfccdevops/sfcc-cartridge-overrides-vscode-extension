@@ -18,6 +18,7 @@
   "config.properties.path.updated": "SFCC Cartridge Overrides Cartridge Path Updated",
   "debug.logger.cartridgesMissing": "Cartridge Missing from Workspace: {0}",
   "debug.logger.cartridgesSummary": "Found {0} files in {1} Cartridges in Workspace",
+  "debug.logger.error": "⚠ ERROR: [{0}] {1}",
   "debug.logger.fetchingCartridges": "Fetching SFCC Cartridges from Workspace ...",
   "debug.logger.missingWorkspace": "Workspace Folder Not Found. Open Folder or Workspace and try again.",
   "debug.logger.overridesDisabled": "Overrides Only: Disabled",

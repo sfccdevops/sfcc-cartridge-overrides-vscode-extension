@@ -2,6 +2,8 @@
 
 const vscode = require('vscode')
 
+const { REGEXP_CARTRIDGE, SEP } = require('./constants')
+
 /**
  * SFCC Cartridge Tree View Provider
  */
@@ -47,15 +49,14 @@ class CartridgesProvider {
     let level = 0
     let found = []
 
-    const regex = /^(.+)\/cartridges\/([^/]+)\/cartridge\/(.+)$/
-    const parts = file.match(regex)
+    const parts = file.match(REGEXP_CARTRIDGE)
 
     // Sanity check that we have all the info we need
     if (parts.length === 4) {
       // Break out file parts into variables
       const cartridge = parts[2]
       const relativePath = parts[3]
-      const splitRelativePath = relativePath.split('/')
+      const splitRelativePath = relativePath.split(SEP)
       const tree = [cartridge].concat(splitRelativePath)
 
       // Get Root Element from Tree Item
@@ -102,10 +103,10 @@ class CartridgesProvider {
 
     // Add Custom Tree Item Data
     treeItem.command = item.command || null
-    treeItem.description = item.description || null
+    treeItem.description = item.description || ''
     treeItem.iconPath = item.iconPath || null
     treeItem.resourceUri = item.resourceUri || null
-    treeItem.tooltip = item.tooltip || null
+    treeItem.tooltip = item.tooltip || ''
 
     return treeItem
   }
@@ -116,7 +117,7 @@ class CartridgesProvider {
    */
   refresh(treeData) {
     this.treeData = treeData
-    this._onDidChangeTreeData.fire(undefined)
+    this._onDidChangeTreeData.fire()
   }
 }
 
